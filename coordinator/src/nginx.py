@@ -29,7 +29,6 @@ LOCATIONS_READ: List[Dict[str, Any]] = [
                 "directive": "proxy_pass",
                 "args": ["http://read"],
             },
-
         ],
     },
     {
@@ -87,7 +86,11 @@ LOCATIONS_WORKER: List[Dict] = [
             },
         ],
     },
-    {"directive":"location","args": ["=","/ring"],"block":[{"directive": "proxy_pass","args":["http://worker"]}]}
+    {
+        "directive": "location",
+        "args": ["=", "/ring"],
+        "block": [{"directive": "proxy_pass", "args": ["http://worker"]}],
+    },
 ]
 
 LOCATIONS_BASIC: List[Dict] = [
