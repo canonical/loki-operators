@@ -48,9 +48,9 @@ class BlocksStorage(BaseModel):
 class Limits(BaseModel):
     """Limits schema."""
 
-    ingestion_rate: int = 0
-    ingestion_burst_size: int = 0
-    max_global_series_per_user: int = 0
+    ingestion_rate_mb: int = 0
+    ingestion_burst_size_mb: int = 0
+    max_global_streams_per_user: int = 0
     ruler_max_rules_per_rule_group: int = 0
     ruler_max_rule_groups_per_tenant: int = 0
 
@@ -85,13 +85,6 @@ class Ruler(BaseModel):
 
     rule_path: str = "/data/ruler"
     alertmanager_url: Optional[str]
-
-
-class Alertmanager(BaseModel):
-    """Alertmanager schema."""
-
-    data_dir: str = "/data/alertmanager"
-    external_url: Optional[str]
 
 
 class Server(BaseModel):
@@ -155,12 +148,11 @@ class LokiBaseConfig(BaseModel):
 
     target: str
     memberlist: Memberlist
-    multitenancy_enabled: bool = True
+    multitenancy_enabled: bool = False
     common: CommonConfig
     limits: Limits
     blocks_storage: Optional[BlocksStorage]
     distributor: Optional[Distributor]
     ingester: Optional[Ingester]
     ruler: Optional[Ruler]
-    alertmanager: Optional[Alertmanager]
     server: Optional[Server]
