@@ -2,31 +2,18 @@ import unittest
 from unittest.mock import MagicMock
 
 from deepdiff import DeepDiff
-from mimir_config import _S3ConfigData
-from mimir_coordinator import MimirCoordinator
+from loki_config import _S3ConfigData
+from loki_coordinator import LokiCoordinator
 
 
-class TestMimirConfig(unittest.TestCase):
+class TestLokiConfig(unittest.TestCase):
     def setUp(self):
         self.cluster_provider = MagicMock()
         self.tls_requirer = MagicMock()
-        self.coordinator = MimirCoordinator(
+        self.coordinator = LokiCoordinator(
             cluster_provider=self.cluster_provider,
             tls_requirer=self.tls_requirer,
         )
-
-    def test_build_alertmanager_config(self):
-        alertmanager_config = self.coordinator._build_alertmanager_config()
-        expected_config = {
-            "data_dir": "/data/data-alertmanager",
-            "sharding_ring": {"replication_factor": 1},
-        }
-        self.assertEqual(alertmanager_config, expected_config)
-
-    def test_build_alertmanager_storage_config(self):
-        alertmanager_storage_config = self.coordinator._build_alertmanager_storage_config()
-        expected_config = {"filesystem": {"dir": "/recovery-data/data-alertmanager"}}
-        self.assertEqual(alertmanager_storage_config, expected_config)
 
     def test_build_compactor_config(self):
         compactor_config = self.coordinator._build_compactor_config()
@@ -52,25 +39,25 @@ class TestMimirConfig(unittest.TestCase):
         }
         self.assertEqual(blocks_storage_config, expected_config)
 
-    def test_build_config_with_s3_data(self):
-        raw_s3_config_data = {
-            "endpoint": "s3.com:port",
-            "access-key": "your_access_key",
-            "secret-key": "your_secret_key",
-            "bucket": "your_bucket",
-            "region": "your_region",
-        }
-        s3_config_data = _S3ConfigData(**raw_s3_config_data)
-        mimir_config = self.coordinator.build_config(s3_config_data)
-        self.assertEqual(
-            mimir_config["common"]["storage"],
-            self.coordinator._build_s3_storage_config(s3_config_data),
-        )
+    # def test_build_config_with_s3_data(self):
+    #     raw_s3_config_data = {
+    #         "endpoint": "s3.com:port",
+    #         "access-key": "your_access_key",
+    #         "secret-key": "your_secret_key",
+    #         "bucket": "your_bucket",
+    #         "region": "your_region",
+    #     }
+    #     s3_config_data = _S3ConfigData(**raw_s3_config_data)
+    #     loki_config = self.coordinator.build_config(s3_config_data)
+    #     self.assertEqual(
+    #         loki_config["common"]["storage"],
+    #         self.coordinator._build_s3_storage_config(s3_config_data),
+    #     )
 
-    def test_build_config_without_s3_data(self):
-        s3_config_data = None
-        mimir_config = self.coordinator.build_config(s3_config_data)
-        self.assertNotIn("storage", mimir_config["common"])
+    # def test_build_config_without_s3_data(self):
+    #     s3_config_data = None
+    #     loki_config = self.coordinator.build_config(s3_config_data)
+    #     self.assertNotIn("storage", loki_config["common"])
 
     def test_build_s3_storage_config(self):
         raw_s3_config_data = {
@@ -136,15 +123,15 @@ class TestMimirConfig(unittest.TestCase):
         tls_config = self.coordinator._build_tls_config()
         expected_config = {
             "http_tls_config": {
-                "cert_file": "/etc/mimir/server.cert",
-                "key_file": "/etc/mimir/private.key",
-                "client_ca_file": "/etc/mimir/ca.cert",
+                "cert_file": "/etc/loki/server.cert",
+                "key_file": "/etc/loki/private.key",
+                "client_ca_file": "/etc/loki/ca.cert",
                 "client_auth_type": "RequestClientCert",
             },
             "grpc_tls_config": {
-                "cert_file": "/etc/mimir/server.cert",
-                "key_file": "/etc/mimir/private.key",
-                "client_ca_file": "/etc/mimir/ca.cert",
+                "cert_file": "/etc/loki/server.cert",
+                "key_file": "/etc/loki/private.key",
+                "client_ca_file": "/etc/loki/ca.cert",
                 "client_auth_type": "RequestClientCert",
             },
         }

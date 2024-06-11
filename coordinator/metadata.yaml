@@ -1,8 +1,9 @@
-name: mimir-coordinator-k8s
+name: loki-coordinator-k8s
 assumes:
   - k8s-api
 
-docs: https://discourse.charmhub.io/t/mimir-coordinator-index/10531
+# TODO: Add documentation
+# docs: https://discourse.charmhub.io/t/mimir-coordinator-index/10531
 
 summary: Mimir coordinator
 
@@ -37,7 +38,7 @@ requires:
     description: |
       Forward workers' built-in logging rules to the external Loki
       (the coordinator, not the worker, owns all rule files).
-      Obtain rules and Loki's API endpoint to later send them to the mimir ruler over another
+      Obtain rules and Loki's API endpoint to later send them to the loki ruler over another
       relation.
 
   ingress:
@@ -59,8 +60,8 @@ requires:
       Enables sending traces to the tracing backend.
 
 provides:
-  mimir-cluster:
-    interface: mimir_cluster
+  loki-cluster:
+    interface: loki_cluster
     description: |
       The coordinator sends the Mimir configuration to the workers, obtaining
       the roles they are configured to take on and their addressing information.

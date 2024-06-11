@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical
+# Copyright 2024 Canonical
 # See LICENSE file for licensing details.
 
 """Charm the service.
