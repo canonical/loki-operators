@@ -227,7 +227,9 @@ class Nginx:
 
     def _upstreams(self, addresses_by_role: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
         nginx_upstreams = []
+        addresses = set()
         for role, address_set in addresses_by_role.items():
+            addresses = addresses.union(address_set)
             nginx_upstreams.append(
                 {
                     "directive": "upstream",
@@ -240,9 +242,6 @@ class Nginx:
             )
         if nginx_upstreams:
             # add a generic upstream which goes to all the workers
-            addresses = set()
-            for address_set in addresses_by_role.values():
-                addresses.union(addresses, address_set)
             nginx_upstreams.append(
                 {
                     "directive": "upstream",

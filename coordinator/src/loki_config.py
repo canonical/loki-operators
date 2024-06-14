@@ -148,7 +148,6 @@ class LokiBaseConfig(BaseModel):
 
     target: str
     memberlist: Memberlist
-    multitenancy_enabled: bool = False
     common: CommonConfig
     limits: Limits
     blocks_storage: Optional[BlocksStorage]

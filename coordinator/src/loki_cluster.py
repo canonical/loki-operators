@@ -123,7 +123,7 @@ class LokiClusterProvider(Object):
                 try:
                     worker_data = LokiClusterRequirerUnitData.load(relation.data[worker_unit])
                     unit_address = worker_data.address
-                    for role in worker_roles:
+                    for role in expand_roles(worker_roles):
                         data[role].add(unit_address)
                 except DataValidationError as e:
                     log.info(f"invalid databag contents: {e}")

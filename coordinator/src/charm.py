@@ -210,7 +210,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 )
             )
 
-        if self.coordinator.is_recommended():
+        if not self.coordinator.is_recommended():
             logger.warning("This deployment is below the recommended deployment requirement.")
             event.add_status(ops.ActiveStatus("degraded"))
         else:

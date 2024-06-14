@@ -5,10 +5,10 @@ assumes:
 # TODO: Add documentation
 # docs: https://discourse.charmhub.io/t/mimir-coordinator-index/10531
 
-summary: Mimir coordinator
+summary: Loki coordinator
 
 description: |
-    Mimir coordinator.
+    Loki coordinator.
 
 containers:
   nginx:
@@ -31,7 +31,7 @@ requires:
     interface: s3
     limit: 1
     description: |
-      The coordinator obtains and shares storage details with workers, enabling Mimir's access to an S3 bucket for data storage.
+      The coordinator obtains and shares storage details with workers, enabling Loki's access to an S3 bucket for data storage.
 
   logging-consumer:
     interface: loki_push_api

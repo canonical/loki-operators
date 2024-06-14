@@ -97,8 +97,6 @@ class LokiCoordinator:
         """
         loki_config: Dict[str, Any] = {
             "common": {},
-            "alertmanager": self._build_alertmanager_config(),
-            "alertmanager_storage": self._build_alertmanager_storage_config(),
             "compactor": self._build_compactor_config(),
             "ingester": self._build_ingester_config(),
             "ruler": self._build_ruler_config(),
@@ -112,7 +110,6 @@ class LokiCoordinator:
             loki_config["common"]["storage"] = self._build_s3_storage_config(s3_config_data)
             self._update_s3_storage_config(loki_config["blocks_storage"], "blocks")
             self._update_s3_storage_config(loki_config["ruler_storage"], "rules")
-            self._update_s3_storage_config(loki_config["alertmanager_storage"], "alerts")
 
         # todo: TLS config for memberlist
         if tls_enabled:
@@ -133,34 +130,6 @@ class LokiCoordinator:
         }
 
     # data_dir:
-    # The Loki Alertmanager stores the alerts state on local disk at the location configured using -alertmanager.storage.path.
-    # Should be persisted if not replicated
-
-    # sharding_ring.replication_factor: int
-    # (advanced) The replication factor to use when sharding the alertmanager.
-    def _build_alertmanager_config(self) -> Dict[str, Any]:
-        alertmanager_scale = len(
-            self._cluster_provider.gather_addresses_by_role().get(LokiRole.alertmanager, [])
-        )
-        return {
-            "data_dir": str(self._root_data_dir / "data-alertmanager"),
-            "sharding_ring": {
-                "replication_factor": (
-                    1 if alertmanager_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION
-                )
-            },
-        }
-
-    # filesystem: dir
-    # The Loki Alertmanager also periodically stores the alert state in the storage backend configured with -alertmanager-storage.backend (For Recovery)
-    def _build_alertmanager_storage_config(self) -> Dict[str, Any]:
-        return {
-            "filesystem": {
-                "dir": str(self._recovery_data_dir / "data-alertmanager"),
-            },
-        }
-
-    # data_dir:
     # Directory to temporarily store blocks during compaction.
     # This directory is not required to be persisted between restarts.
     def _build_compactor_config(self) -> Dict[str, Any]:
@@ -174,7 +143,7 @@ class LokiCoordinator:
     # microservices mode.
     def _build_ingester_config(self) -> Dict[str, Any]:
         ingester_scale = len(
-            self._cluster_provider.gather_addresses_by_role().get(LokiRole.ingester, [])
+            self._cluster_provider.gather_addresses_by_role().get(LokiRole.write, [])
         )
         return {
             "ring": {
@@ -198,7 +167,7 @@ class LokiCoordinator:
     # microservices mode.
     def _build_store_gateway_config(self) -> Dict[str, Any]:
         store_gateway_scale = len(
-            self._cluster_provider.gather_addresses_by_role().get(LokiRole.store_gateway, [])
+            self._cluster_provider.gather_addresses_by_role().get(LokiRole.backend, [])
         )
         return {
             "sharding_ring": {
