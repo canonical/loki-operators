@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 import ops
 import yaml
+from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.data_platform_libs.v0.s3 import (
     S3Requirer,
 )
@@ -75,6 +76,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self._nginx_prometheus_exporter_container = self.unit.get_container(
             "nginx-prometheus-exporter"
         )
+        self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
         self.server_cert = CertHandler(
             charm=self,
             key="loki-server-cert",
@@ -83,8 +85,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.s3_requirer = S3Requirer(self, S3_RELATION_NAME, BUCKET_NAME)
         self.cluster_provider = LokiClusterProvider(self)
         self.coordinator = LokiCoordinator(
+            self,
             cluster_provider=self.cluster_provider,
-            tls_requirer=self.server_cert,
+            alertmanager_consumer=self.alertmanager_consumer,
         )
         self.nginx = Nginx(
             self,
@@ -397,6 +400,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             os.remove(f)
 
     def _consolidate_nginx_rules(self):
+        os.makedirs(CONSOLIDATED_ALERT_RULES_PATH, exist_ok=True)
         os.makedirs(CONSOLIDATED_ALERT_RULES_PATH, exist_ok=True)
         for filename in glob.glob(os.path.join(NGINX_ORIGINAL_ALERT_RULES_PATH, "*.*")):
             shutil.copy(filename, f"{CONSOLIDATED_ALERT_RULES_PATH}/")

@@ -12,7 +12,6 @@ class TestLokiConfig(unittest.TestCase):
         self.tls_requirer = MagicMock()
         self.coordinator = LokiCoordinator(
             cluster_provider=self.cluster_provider,
-            tls_requirer=self.tls_requirer,
         )
 
     def test_build_compactor_config(self):
