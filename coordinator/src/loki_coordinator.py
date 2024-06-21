@@ -92,6 +92,8 @@ class LokiCoordinator:
         loki_config = ConfigBuilder(
             target="all",  # FIXME: Add worker's target
             instance_addr="",  # FIXME: Add worker's address
+            worker_addresses=self._cluster_provider.gather_addresses(),
+            cluster_label="combine-model-and-uuid-and-app-name",
             alertmanager_url=self._alerting_config(),
             external_url="external_url",  # FIXME: Check if Loki's doc is OK. See config_builde.py
             ingestion_rate_mb=int(self._charm.config["ingestion-rate-mb"]),

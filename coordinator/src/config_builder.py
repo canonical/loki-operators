@@ -4,7 +4,7 @@
 """Config builder for Loki Charmed Operator."""
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from loki_config import _S3ConfigData
 
@@ -41,6 +41,8 @@ class ConfigBuilder:
         self,
         *,
         instance_addr: str,
+        worker_addresses: Set[str],
+        cluster_label: str,
         alertmanager_url: str,
         external_url: str,
         ingestion_rate_mb: int,
@@ -52,6 +54,8 @@ class ConfigBuilder:
     ):
         """Init method."""
         self.instance_addr = instance_addr
+        self.worker_addresses = worker_addresses
+        self.cluster_label = cluster_label
         self.alertmanager_url = alertmanager_url
         self.external_url = external_url
         self.ingestion_rate_mb = ingestion_rate_mb
@@ -78,6 +82,7 @@ class ConfigBuilder:
             "frontend": self._frontend,
             "querier": self._querier,
             "compactor": self._compactor,
+            "memberlist": self._memberlist,
         }
 
     @property
@@ -236,5 +241,11 @@ class ConfigBuilder:
             # Activate custom retention. Default is False.
             "retention_enabled": retention_enabled,
             "working_directory": COMPACTOR_DIR,
-            "shared_store": "filesystem",
+        }
+
+    @property
+    def _memberlist(self) -> Dict[str, Any]:
+        return {
+            "cluster_label": self.cluster_label,
+            "join_members": list(self.worker_addresses),
         }
