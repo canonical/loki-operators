@@ -1,92 +1,84 @@
-# Copyright 2022 Canonical Ltd.
-# See LICENSE file for licensing details.
-
 import logging
-import subprocess
-from pathlib import Path
+from typing import Any, Dict
 
+import requests
 import yaml
+from juju.application import Application
+from juju.unit import Unit
+from minio import Minio
 from pytest_operator.plugin import OpsTest
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 
 
-async def deploy_literal_bundle(ops_test: OpsTest, bundle: str):
-    run_args = [
-        "juju",
-        "deploy",
-        "--trust",
-        "-m",
-        ops_test.model_name,
-        str(ops_test.render_bundle(bundle)),
-    ]
-
-    retcode, stdout, stderr = await ops_test.run(*run_args)
-    assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
-    logger.info(stdout)
+def charm_resources(metadata_file="metadata.yaml") -> Dict[str, str]:
+    with open(metadata_file, "r") as file:
+        metadata = yaml.safe_load(file)
+    resources = {}
+    for res, data in metadata["resources"].items():
+        resources[res] = data["upstream-source"]
+    return resources
 
 
-def oci_image(metadata_file: str, image_name: str) -> str:
-    """Find upstream source for a container image.
-
-    Args:
-        metadata_file: string path of metadata YAML file relative
-            to top level charm directory
-        image_name: OCI container image string name as defined in
-            metadata.yaml file
-
-    Returns:
-        upstream image source
-
-    Raises:
-        FileNotFoundError: if metadata_file path is invalid
-        ValueError: if upstream source for image name can not be found
-    """
-    metadata = yaml.safe_load(Path(metadata_file).read_text())
-
-    resources = metadata.get("resources", {})
-    if not resources:
-        raise ValueError("No resources found")
-
-    image = resources.get(image_name, {})
-    if not image:
-        raise ValueError(f"{image_name} image not found")
-
-    upstream_source = image.get("upstream-source", "")
-    if not upstream_source:
-        raise ValueError("Upstream source not found")
-
-    return upstream_source
+async def configure_minio(ops_test: OpsTest):
+    bucket_name = "loki"
+    minio_addr = await get_unit_address(ops_test, "minio", 0)
+    mc_client = Minio(
+        f"{minio_addr}:9000",
+        access_key="access",
+        secret_key="secretsecret",
+        secure=False,
+    )
+    # create bucket
+    found = mc_client.bucket_exists(bucket_name)
+    if not found:
+        mc_client.make_bucket(bucket_name)
 
 
-def get_workload_file(
-    model_name: str, app_name: str, unit_num: int, container_name: str, filepath: str
-) -> bytes:
-    cmd = [
-        "juju",
-        "ssh",
-        "--model",
-        model_name,
-        "--container",
-        container_name,
-        f"{app_name}/{unit_num}",
-        "cat",
-        filepath,
-    ]
-    try:
-        res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        logger.error(e.stdout.decode())
-        raise e
-    return res.stdout
+async def configure_s3_integrator(ops_test: OpsTest):
+    assert ops_test.model is not None
+    bucket_name = "loki"
+    config = {
+        "access-key": "access",
+        "secret-key": "secretsecret",
+    }
+    s3_integrator_app: Application = ops_test.model.applications["s3"]  # type: ignore
+    s3_integrator_leader: Unit = s3_integrator_app.units[0]
+
+    await s3_integrator_app.set_config(
+        {
+            "endpoint": f"minio-0.minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
+            "bucket": bucket_name,
+        }
+    )
+    action = await s3_integrator_leader.run_action("sync-s3-credentials", **config)
+    action_result = await action.wait()
+    assert action_result.status == "completed"
 
 
-async def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
-    cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
-    try:
-        res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        logger.info(res)
-    except subprocess.CalledProcessError as e:
-        logger.error(e.stdout.decode())
-        raise e
-    return res.stdout
+async def get_unit_address(ops_test: OpsTest, app_name: str, unit_no: int):
+    assert ops_test.model is not None
+    status = await ops_test.model.get_status()
+    app = status["applications"][app_name]
+    if app is None:
+        assert False, f"no app exists with name {app_name}"
+    unit = app["units"].get(f"{app_name}/{unit_no}")
+    if unit is None:
+        assert False, f"no unit exists in app {app_name} with index {unit_no}"
+    return unit["address"]
+
+
+@retry(wait=wait_fixed(10), stop=stop_after_attempt(10))
+async def check_agent_data_in_loki(ops_test: OpsTest, coordinator_app: str) -> Dict[str, Any]:
+    loki_url = await get_unit_address(ops_test, coordinator_app, 0)
+    response = requests.get(f"http://{loki_url}:8080/status")
+    assert response.status_code == 200
+
+    response = requests.get(
+        f"http://{loki_url}:8080/prometheus/api/v1/query",
+        params={"query": 'up{juju_charm=~"grafana-agent-k8s"}'},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"  # the query was successful
+    assert response.json()["data"]["result"]

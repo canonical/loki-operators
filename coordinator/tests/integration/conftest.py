@@ -8,27 +8,10 @@ from collections import defaultdict
 from datetime import datetime
 
 import pytest
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
-
-
-class Store(defaultdict):
-    def __init__(self):
-        super(Store, self).__init__(Store)
-
-    def __getattr__(self, key):
-        """Override __getattr__ so dot syntax works on keys."""
-        try:
-            return self[key]
-        except KeyError:
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        """Override __setattr__ so dot syntax works on keys."""
-        self[key] = value
-
-
-store = Store()
+store = defaultdict(str)
 
 
 def timed_memoizer(func):
@@ -48,10 +31,10 @@ def timed_memoizer(func):
 
     return wrapper
 
-
 @pytest.fixture(scope="module")
 @timed_memoizer
-async def mimir_charm(ops_test):
-    """Mimir charm used for integration testing."""
+async def loki_charm(ops_test: OpsTest) -> str:
+    """Loki charm used for integration testing."""
     charm = await ops_test.build_charm(".")
-    return charm
+    assert charm
+    return str(charm)
