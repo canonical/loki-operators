@@ -14,7 +14,7 @@ import requests
 import yaml
 from helpers import (
     charm_resources,
-    check_agent_data_in_loki,
+    check_data_in_loki,
     configure_minio,
     configure_s3_integrator,
     get_unit_address,
@@ -26,13 +26,14 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 
-METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 coordinator = SimpleNamespace(name="coordinator")
 
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
     """Build the charm-under-test and deploy it together with related charms."""
+    await loki_charm
     assert ops_test.model is not None  # for pyright
     await ops_test.model.deploy(loki_charm, "loki", resources=charm_resources())
 
@@ -63,13 +64,12 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
     await configure_s3_integrator(ops_test)
     await ops_test.model.wait_for_idle(apps=["s3"], status="active")
 
-    # Deploy Grafana agent to test the Loki workload
-    await ops_test.model.deploy("grafana-agent-k8s", "agent")
-    await ops_test.model.integrate("grafana:metrics-endpoint", "agent")
-    await ops_test.model.integrate("loki:receive-remote-write", "agent")
+    # Deploy Flog to test the Loki workload
+    await ops_test.model.deploy("flog-k8s", "flog", channel="latest/edge")
+    await ops_test.model.integrate("loki:logging", "flog")
     await ops_test.model.integrate("loki:s3", "s3")
 
-    await ops_test.model.wait_for_idle(apps=["grafana", "agent"], status="active")
+    await ops_test.model.wait_for_idle(apps=["grafana", "flog"], status="active")
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(10))
@@ -108,8 +108,8 @@ async def test_loki_monolithic(ops_test: OpsTest):
         config={"role-all": True, "role-query-frontend": True},
     )
     await ops_test.model.integrate("loki:loki-cluster", "worker")
-    await ops_test.model.wait_for_idle(apps=["loki", "worker", "agent", "s3"], status="active")
-    await check_agent_data_in_loki(ops_test, "loki")
+    await ops_test.model.wait_for_idle(apps=["loki", "worker", "flog", "s3"], status="active")
+    await check_data_in_loki(ops_test, "loki", target_app="flog")
     await ops_test.model.remove_application(app_name="worker", destroy_storage=True)
 
 
@@ -135,7 +135,7 @@ async def test_loki_multiple_workers(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=["loki", "worker-read", "worker-write", "worker-backend"], status="active"
     )
-    await check_agent_data_in_loki(ops_test, "loki")
+    await check_data_in_loki(ops_test, "loki", target_app="flog")
 
 
 async def test_loki_scaled_workers(ops_test: OpsTest):
@@ -146,7 +146,10 @@ async def test_loki_scaled_workers(ops_test: OpsTest):
     await worker_read.scale(3)
     await worker_write.scale(3)
     await worker_backend.scale(3)
-    await check_agent_data_in_loki(ops_test, "loki")
+    await ops_test.model.wait_for_idle(
+        apps=["loki", "worker-read", "worker-write", "worker-backend"], status="active"
+    )
+    await check_data_in_loki(ops_test, "loki", target_app="flog")
 
 
 async def test_traefik(ops_test: OpsTest):

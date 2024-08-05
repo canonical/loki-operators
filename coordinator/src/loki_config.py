@@ -140,7 +140,9 @@ class LokiConfig:
 
         return {
             "path_prefix": LOKI_DIR,
-            "replication_factor": 1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION,
+            "replication_factor": (
+                1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION
+            ),
             "storage": storage,
         }
 

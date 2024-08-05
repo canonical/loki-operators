@@ -28,14 +28,16 @@ def coordinator():
         return_value=["http://some.loki.worker.0:8080", "http://some.loki.worker.1:8080"]
     )
     coord.s3_ready = MagicMock(return_value=True)
-    type(coord)._s3_config = PropertyMock(return_value={
-        "endpoint": "s3.com:port",
-        "access_key_id": "your_access_key",
-        "secret_access_key": "your_secret_key",
-        "bucket_name": "your_bucket",
-        "region": "your_region",
-        "insecure": "true",
-    })
+    type(coord)._s3_config = PropertyMock(
+        return_value={
+            "endpoint": "s3.com:port",
+            "access_key_id": "your_access_key",
+            "secret_access_key": "your_secret_key",
+            "bucket_name": "your_bucket",
+            "region": "your_region",
+            "insecure": "true",
+        }
+    )
     coord.nginx = MagicMock()
     coord.nginx.are_certificates_on_disk = MagicMock(return_value=True)
     return coord
@@ -85,9 +87,7 @@ def test_build_common_config(loki_config, coordinator, addresses_by_role, replic
     expected_config_http = {
         "path_prefix": "/loki",
         "replication_factor": replication,
-        "storage": {
-            "s3": s3_data_http
-        },
+        "storage": {"s3": s3_data_http},
         # "filesystem": {"chunks_directory": "/loki/chunks", "rules_directory": "/loki/rules"},
     }
     assert common_config == expected_config_http
@@ -115,7 +115,9 @@ def test_build_frontend_config(loki_config: LokiConfig):
 
 def test_build_ingester_config(loki_config: LokiConfig):
     ingester_config = loki_config._ingester_config()
-    expected_config = {"wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True}}
+    expected_config = {
+        "wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True}
+    }
     assert ingester_config == expected_config
 
 
@@ -159,7 +161,10 @@ def test_build_querier_config(loki_config: LokiConfig):
 
 def test_build_query_range_config(loki_config: LokiConfig):
     query_range_config = loki_config._query_range_config()
-    expected_config = {"parallelise_shardable_queries": False, "results_cache": {"cache": {"embedded_cache": {"enabled": True}}}}
+    expected_config = {
+        "parallelise_shardable_queries": False,
+        "results_cache": {"cache": {"embedded_cache": {"enabled": True}}},
+    }
     assert query_range_config == expected_config
 
 
@@ -168,21 +173,44 @@ def test_build_query_range_config(loki_config: LokiConfig):
 
 def test_build_schema_config(loki_config: LokiConfig):
     schema_config = loki_config._schema_config()
-    expected_config = {"configs": [{"from": "2020-10-24", "index": {"period": "24h", "prefix": "index_"}, "object_store": "filesystem", "schema": "v11", "store": "boltdb-shipper"}]}
+    expected_config = {
+        "configs": [
+            {
+                "from": "2020-10-24",
+                "index": {"period": "24h", "prefix": "index_"},
+                "object_store": "filesystem",
+                "schema": "v11",
+                "store": "boltdb-shipper",
+            }
+        ]
+    }
     assert schema_config == expected_config
 
 
 def test_build_storage_config(loki_config: LokiConfig):
     storage_config = loki_config._storage_config()
-    expected_config = {"boltdb_shipper": {"active_index_directory": "/loki/boltdb-shipper-active", "shared_store": "filesystem", "cache_location": "/loki/boltdb-shipper-cache"}, "filesystem": {"directory": "/loki/chunks"}}
+    expected_config = {
+        "boltdb_shipper": {
+            "active_index_directory": "/loki/boltdb-shipper-active",
+            "shared_store": "filesystem",
+            "cache_location": "/loki/boltdb-shipper-cache",
+        },
+        "filesystem": {"directory": "/loki/chunks"},
+    }
     assert storage_config == expected_config
 
 
 def test_build_server_config(loki_config: LokiConfig, coordinator):
     server_config = loki_config._server_config(coordinator)
-    expected_config = {"http_listen_address": "0.0.0.0", "http_listen_port": 3100, "http_tls_config": {"cert_file": "/etc/worker/server.cert", "key_file": "/etc/worker/private.key"}}
+    expected_config = {
+        "http_listen_address": "0.0.0.0",
+        "http_listen_port": 3100,
+        "http_tls_config": {
+            "cert_file": "/etc/worker/server.cert",
+            "key_file": "/etc/worker/private.key",
+        },
+    }
     assert server_config == expected_config
-
 
 
 if __name__ == "__main__":

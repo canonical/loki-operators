@@ -12,7 +12,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 logger = logging.getLogger(__name__)
 
 
-def charm_resources(metadata_file="metadata.yaml") -> Dict[str, str]:
+def charm_resources(metadata_file="charmcraft.yaml") -> Dict[str, str]:
     with open(metadata_file, "r") as file:
         metadata = yaml.safe_load(file)
     resources = {}
@@ -70,15 +70,17 @@ async def get_unit_address(ops_test: OpsTest, app_name: str, unit_no: int):
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(10))
-async def check_agent_data_in_loki(ops_test: OpsTest, coordinator_app: str) -> Dict[str, Any]:
+async def check_data_in_loki(
+    ops_test: OpsTest, coordinator_app: str, target_app: str
+) -> Dict[str, Any]:
     loki_url = await get_unit_address(ops_test, coordinator_app, 0)
     response = requests.get(f"http://{loki_url}:8080/status")
     assert response.status_code == 200
 
-    response = requests.get(
-        f"http://{loki_url}:8080/prometheus/api/v1/query",
-        params={"query": 'up{juju_charm=~"grafana-agent-k8s"}'},
-    )
+    response = requests.get(f"http://{loki_url}:8080/loki/api/v1/series")
     assert response.status_code == 200
     assert response.json()["status"] == "success"  # the query was successful
-    assert response.json()["data"]["result"]
+
+    # {data: [..., ..., {juju_charm: "grafana-agent-k8s"}, ...]}
+    loki_series = response.json()["data"]
+    assert len([s for s in loki_series if s["juju_application"] == target_app]) > 0

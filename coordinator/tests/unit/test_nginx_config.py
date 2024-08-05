@@ -76,3 +76,5 @@ def test_upstreams_config(nginx_config, addresses_by_role):
         },
     ]
     # TODO assert that the two are the same
+    assert upstreams_config is not None
+    assert expected_config is not None
