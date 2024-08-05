@@ -127,6 +127,7 @@ class LokiConfig:
         }
 
     def _common_config(self, coordinator: Coordinator) -> Dict[str, Any]:
+        backend_scale = len(coordinator.cluster.gather_addresses_by_role().get("backend", []))
         storage = {
             "filesystem": {
                 "chunks_directory": CHUNKS_DIR,
@@ -139,7 +140,7 @@ class LokiConfig:
 
         return {
             "path_prefix": LOKI_DIR,
-            "replication_factor": 1,
+            "replication_factor": 1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION,
             "storage": storage,
         }
 
