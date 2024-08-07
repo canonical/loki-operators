@@ -33,11 +33,11 @@ LOCATIONS_READ: List[Dict[str, Any]] = [
             },
             {
                 "directive": "proxy_set_header",
-                "args": ["Upgrade $http_upgrade"],
+                "args": ["Upgrade", "$http_upgrade"],
             },
             {
                 "directive": "proxy_set_header",
-                "args": ['Connection "upgrade"'],
+                "args": ["Connection", "upgrade"],
             },
         ],
     },
@@ -282,7 +282,7 @@ class NginxConfig:
             "directive": "server",
             "args": [],
             "block": [
-                {"directive": "listen", "args": [nginx_port]},
+                {"directive": "listen", "args": [f"{nginx_port}"]},
                 {"directive": "listen", "args": [f"[::]:{nginx_port}"]},
                 *self._basic_auth(auth_enabled),
                 {
