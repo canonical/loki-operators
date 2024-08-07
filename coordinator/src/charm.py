@@ -15,11 +15,13 @@ import os
 import shutil
 import socket
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import cosl.coordinated_workers.nginx
 import ops
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
+from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.tempo_k8s.v1.charm_tracing import trace_charm
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from cosl.coordinated_workers.coordinator import Coordinator
@@ -88,6 +90,15 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             secure_extra_fields={"httpHeaderValue1": "anonymous"},
         )
         self._consolidate_nginx_rules()
+
+        external_url = urlparse(self.external_url)
+        self.loki_provider = LokiPushApiProvider(
+            self,
+            address=external_url.hostname or self.hostname,
+            port=external_url.port or 443 if self.coordinator.tls_available else 8080,
+            scheme=external_url.scheme,
+            path=f"{external_url.path}/loki/api/v1/push",
+        )
 
         ######################################
         # === EVENT HANDLER REGISTRATION === #

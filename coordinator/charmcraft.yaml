@@ -81,7 +81,7 @@ requires:
     interface: tls-certificates
     limit: 1
     description: |
-      Certificate and key files for securing Mimir communications with TLS.
+      Certificate and key files for securing Loki communications with TLS.
 
   tracing:
     interface: tracing
@@ -90,10 +90,15 @@ requires:
       Enables sending traces to the tracing backend.
 
 provides:
+  logging:
+    interface: loki_push_api
+    description: |
+      The coordinator can receive logs from other applications.
+
   loki-cluster:
     interface: loki_cluster
     description: |
-      The coordinator sends the Mimir configuration to the workers, obtaining
+      The coordinator sends the Loki configuration to the workers, obtaining
       the roles they are configured to take on and their addressing information.
 
   receive-remote-write:
