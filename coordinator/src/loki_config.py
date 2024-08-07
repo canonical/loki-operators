@@ -241,11 +241,11 @@ class LokiConfig:
         return {
             "configs": [
                 {
-                    "from": "2020-10-24",
+                    "from": "2024-08-06",
                     "index": {"period": "24h", "prefix": "index_"},
                     "object_store": "filesystem",
-                    "schema": "v11",
-                    "store": "boltdb-shipper",
+                    "schema": "v13",
+                    "store": "tsdb",
                 }
             ]
         }
