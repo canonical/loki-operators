@@ -52,11 +52,10 @@ DEFAULT_REPLICATION = 3
 
 HTTP_LISTEN_PORT = 3100
 LOKI_DIR = "/loki"
-BOLTDB_DIR = os.path.join(LOKI_DIR, "boltdb-shipper-active")
-BOLTDB_CACHE_DIR = os.path.join(LOKI_DIR, "boltdb-shipper-cache")
 COMPACTOR_DIR = os.path.join(LOKI_DIR, "compactor")
 CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
-RULES_DIR = os.path.join(LOKI_DIR, "rules")
+ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
+CACHE_DIR = os.path.join(LOKI_DIR, "index_cache")
 
 
 class LokiRolesConfig:
@@ -109,7 +108,7 @@ class LokiConfig:
             "query_range": self._query_range_config(),
             "ruler": self._ruler_config(coordinator),
             "schema_config": self._schema_config(),
-            "storage_config": self._storage_config(),
+            "storage_config": self._storage_config(coordinator),
             "server": self._server_config(coordinator),
         }
 
@@ -128,22 +127,11 @@ class LokiConfig:
 
     def _common_config(self, coordinator: Coordinator) -> Dict[str, Any]:
         backend_scale = len(coordinator.cluster.gather_addresses_by_role().get("backend", []))
-        storage = {
-            "filesystem": {
-                "chunks_directory": CHUNKS_DIR,
-                "rules_directory": RULES_DIR,
-            }
-        }
-
-        if coordinator.s3_ready:
-            storage = {"s3": coordinator._s3_config}
-
         return {
             "path_prefix": LOKI_DIR,
             "replication_factor": (
                 1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION
             ),
-            "storage": storage,
         }
 
     def _compactor_config(self, retention_period: int) -> Dict[str, Any]:
@@ -250,16 +238,27 @@ class LokiConfig:
             ]
         }
 
-    def _storage_config(self) -> Dict[str, Any]:
-        # Ref: https://grafana.com/docs/loki/latest/configure/#storage_config
-        return {
-            "boltdb_shipper": {
-                "active_index_directory": BOLTDB_DIR,
-                "shared_store": "filesystem",
-                "cache_location": BOLTDB_CACHE_DIR,
-            },
-            "filesystem": {"directory": CHUNKS_DIR},
+    def _storage_config(self, coordinator: Coordinator) -> Dict[str, Any]:
+        # Ref: https://grafana.com/docs/loki/latest/configure/examples/configuration-examples/#2-s3-cluster-exampleyaml
+        storage_config = {
+            "tsdb_shipper": {
+                "active_index_directory": ACTIVE_INDEX_DIR,
+                "cache_location": CACHE_DIR,
+            }
         }
+
+        if coordinator.s3_ready:
+            access_key = coordinator._s3_config["access_key_id"]
+            secret_access_key = coordinator._s3_config["secret_access_key"]
+            endpoint = coordinator._s3_config["endpoint"]
+            bucket_name = coordinator._s3_config["bucket_name"]
+
+            storage_config["aws"] = {
+                "s3": f"s3://{access_key}:{secret_access_key}@{endpoint}/{bucket_name}",
+                "s3forcepathstyle": True,
+            }
+
+        return storage_config
 
     def _server_config(self, coordinator: Coordinator) -> Dict[str, Any]:
         _server = {
