@@ -50,10 +50,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def __init__(self, *args: Any):
         super().__init__(*args)
 
-        # TODO: On any worker relation-joined/departed, need to updade grafana agent's scrape
-        #  targets with the new memberlist.
-        #  (Remote write would still be the same nginx-proxied endpoint.)
-
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
             "nginx-prometheus-exporter"
@@ -81,7 +77,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # FIXME: Should AlertmanagerConsumer it be in the Coordinator object?
         self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
         grafana_source_scheme = "https" if self.coordinator.cert_handler.available else "http"  # type: ignore
-        grafana_source_url = self.coordinator.cluster.get_address_from_role("ruler")
+        grafana_source_url = self.coordinator.cluster.get_address_from_role("read")
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
