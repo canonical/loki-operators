@@ -11,6 +11,7 @@ from cosl.coordinated_workers.nginx import CERT_PATH, KEY_PATH
 
 logger = logging.getLogger(__name__)
 
+LOKI_PORT = 3100
 
 LOCATIONS_READ: List[Dict[str, Any]] = [
     {
@@ -128,7 +129,7 @@ class NginxConfig:
                 "args": [],
                 "block": [
                     # upstreams (load balancing)
-                    *self._upstreams(addresses_by_role, coordinator.nginx.options["nginx_port"]),
+                    *self._upstreams(addresses_by_role, LOKI_PORT),
                     # temp paths
                     {"directive": "client_body_temp_path", "args": ["/tmp/client_temp"]},
                     {"directive": "proxy_temp_path", "args": ["/tmp/proxy_temp_path"]},
@@ -188,7 +189,7 @@ class NginxConfig:
         ]
 
     def _upstreams(
-        self, addresses_by_role: Dict[str, Set[str]], nginx_port: int
+        self, addresses_by_role: Dict[str, Set[str]], worker_port: int
     ) -> List[Dict[str, Any]]:
         nginx_upstreams = []
         addresses = set()
@@ -199,7 +200,7 @@ class NginxConfig:
                     "directive": "upstream",
                     "args": [role],
                     "block": [
-                        {"directive": "server", "args": [f"{addr}:{nginx_port}"]}
+                        {"directive": "server", "args": [f"{addr}:{worker_port}"]}
                         for addr in address_set
                     ],
                 }
@@ -211,7 +212,7 @@ class NginxConfig:
                     "directive": "upstream",
                     "args": ["worker"],
                     "block": [
-                        {"directive": "server", "args": [f"{addr}:{nginx_port}"]}
+                        {"directive": "server", "args": [f"{addr}:{worker_port}"]}
                         for addr in addresses
                     ],
                 }

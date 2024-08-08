@@ -81,7 +81,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
-            source_url=f"{grafana_source_scheme}://{grafana_source_url}:8080/loki",
+            source_url=f"{grafana_source_scheme}://{grafana_source_url}:8080",
             extra_fields={"httpHeaderName1": "X-Scope-OrgID"},
             secure_extra_fields={"httpHeaderValue1": "anonymous"},
         )
