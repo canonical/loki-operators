@@ -10,6 +10,8 @@ import logging
 import pytest
 import requests
 from helpers import (
+    ACCESS_KEY,
+    SECRET_KEY,
     charm_resources,
     configure_minio,
     configure_s3_integrator,
@@ -41,7 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
         ops_test.model.deploy(
             "minio",
             channel="latest/stable",
-            config={"access-key": "access", "secret-key": "secretsecret"},
+            config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
         ),
         ops_test.model.deploy("s3-integrator", "s3", channel="latest/stable"),
     )

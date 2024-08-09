@@ -11,6 +11,9 @@ from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
+ACCESS_KEY = "AccessKey"
+SECRET_KEY = "SecretKey"
+
 
 def charm_resources(metadata_file="charmcraft.yaml") -> Dict[str, str]:
     with open(metadata_file, "r") as file:
@@ -26,8 +29,8 @@ async def configure_minio(ops_test: OpsTest):
     minio_addr = await get_unit_address(ops_test, "minio", 0)
     mc_client = Minio(
         f"{minio_addr}:9000",
-        access_key="access",
-        secret_key="secretsecret",
+        access_key=ACCESS_KEY,
+        secret_key=SECRET_KEY,
         secure=False,
     )
     # create bucket
@@ -40,8 +43,8 @@ async def configure_s3_integrator(ops_test: OpsTest):
     assert ops_test.model is not None
     bucket_name = "loki"
     config = {
-        "access-key": "access",
-        "secret-key": "secretsecret",
+        "access-key": ACCESS_KEY,
+        "secret-key": SECRET_KEY,
     }
     s3_integrator_app: Application = ops_test.model.applications["s3"]  # type: ignore
     s3_integrator_leader: Unit = s3_integrator_app.units[0]
