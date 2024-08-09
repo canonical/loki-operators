@@ -226,14 +226,15 @@ class LokiConfig:
         }
 
     def _schema_config(self) -> Dict[str, Any]:
+        # Ref: https://grafana.com/docs/loki/latest/configure/examples/configuration-examples/#10-expanded-s3-snippetyaml
         return {
             "configs": [
                 {
                     "from": "2024-08-06",
-                    "index": {"period": "24h", "prefix": "index_"},
-                    "object_store": "filesystem",
+                    "object_store": "s3",
                     "schema": "v13",
                     "store": "tsdb",
+                    "index": {"period": "24h", "prefix": "index_"},
                 }
             ]
         }
@@ -247,14 +248,27 @@ class LokiConfig:
             }
         }
 
+        # Ref: https://grafana.com/docs/loki/latest/configure/examples/configuration-examples/#10-expanded-s3-snippetyaml
         if coordinator.s3_ready:
             access_key = coordinator._s3_config["access_key_id"]
             secret_access_key = coordinator._s3_config["secret_access_key"]
             endpoint = coordinator._s3_config["endpoint"]
             bucket_name = coordinator._s3_config["bucket_name"]
 
+            # The storage_config block configures one of many possible stores for both the index
+            # and chunks. Which configuration to be picked should be defined in schema_config block.
             storage_config["aws"] = {
-                "s3": f"s3://{access_key}:{secret_access_key}@{endpoint}/{bucket_name}",
+                "bucketnames": bucket_name,
+                "endpoint": endpoint,
+                "region": "s3_region", # FIXME: Should region be configured?
+                "access_key_id": access_key,
+                "secret_access_key": secret_access_key,
+                "insecure": True, # FIXME: Should be True if running over HTTPS
+                "http_config": {
+                    "idle_conn_timeout": "90s",
+                    "response_header_timeout": "0s",
+                    "insecure_skip_verify": False,
+                },
                 "s3forcepathstyle": True,
             }
 
