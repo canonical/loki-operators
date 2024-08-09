@@ -32,20 +32,21 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
     """Build the charm-under-test and deploy it together with related charms."""
     assert ops_test.model is not None  # for pyright
     await asyncio.gather(
-        ops_test.model.deploy(loki_charm, "loki", resources=charm_resources()),
-        ops_test.model.deploy("prometheus-k8s", "prometheus", channel="latest/edge"),
-        ops_test.model.deploy("loki-k8s", "loki-mono", channel="latest/edge"),
-        ops_test.model.deploy("grafana-k8s", "grafana", channel="latest/edge"),
-        ops_test.model.deploy("flog-k8s", "flog", channel="latest/edge"),
-        ops_test.model.deploy("traefik-k8s", "traefik", channel="latest/edge"),
+        ops_test.model.deploy(loki_charm, "loki", resources=charm_resources(), trust=True),
+        ops_test.model.deploy("prometheus-k8s", "prometheus", channel="latest/edge", trust=True),
+        ops_test.model.deploy("loki-k8s", "loki-mono", channel="latest/edge", trust=True),
+        ops_test.model.deploy("grafana-k8s", "grafana", channel="latest/edge", trust=True),
+        ops_test.model.deploy("flog-k8s", "flog", channel="latest/edge", trust=True),
+        ops_test.model.deploy("traefik-k8s", "traefik", channel="latest/edge", trust=True),
         # Deploy and configure Minio and S3
         # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
         ops_test.model.deploy(
             "minio",
             channel="latest/stable",
             config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
+            trust=True,
         ),
-        ops_test.model.deploy("s3-integrator", "s3", channel="latest/stable"),
+        ops_test.model.deploy("s3-integrator", "s3", channel="latest/stable", trust=True),
     )
     await ops_test.model.wait_for_idle(apps=["minio"], status="active")
     await ops_test.model.wait_for_idle(apps=["s3"], status="blocked")
@@ -68,6 +69,7 @@ async def test_deploy_workers(ops_test: OpsTest):
         "worker",
         channel="latest/edge",
         config={"role-all": True},
+        trust=True,
     )
     await ops_test.model.wait_for_idle(apps=["worker"], status="blocked")
 
