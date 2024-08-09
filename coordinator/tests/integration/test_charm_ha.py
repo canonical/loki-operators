@@ -4,7 +4,6 @@
 
 # pyright: reportAttributeAccessIssue=false
 
-import asyncio
 import logging
 
 import pytest
@@ -20,6 +19,8 @@ from helpers import (
 )
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_fixed
+
+from tests.integration.test_charm_ha_scaled import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,25 @@ async def test_deploy_workers(ops_test: OpsTest):
     assert ops_test.model is not None
     await ops_test.model.deploy(
         "loki-worker-k8s",
-        "worker",
+        "worker-read",
         channel="latest/edge",
-        config={"role-all": True},
+        config={"role-read": True},
     )
-    await ops_test.model.wait_for_idle(apps=["worker"], status="blocked")
+    await ops_test.model.deploy(
+        "loki-worker-k8s",
+        "worker-write",
+        channel="latest/edge",
+        config={"role-write": True},
+    )
+    await ops_test.model.deploy(
+        "loki-worker-k8s",
+        "worker-backend",
+        channel="latest/edge",
+        config={"role-backend": True},
+    )
+    await ops_test.model.wait_for_idle(
+        apps=["worker-read", "worker-write", "worker-backend"], status="blocked"
+    )
 
 
 @pytest.mark.setup
@@ -76,7 +91,9 @@ async def test_integrate(ops_test: OpsTest):
     assert ops_test.model is not None
     await asyncio.gather(
         ops_test.model.integrate("loki:s3", "s3"),
-        ops_test.model.integrate("loki:loki-cluster", "worker"),
+        ops_test.model.integrate("loki:loki-cluster", "worker-read"),
+        ops_test.model.integrate("loki:loki-cluster", "worker-write"),
+        ops_test.model.integrate("loki:loki-cluster", "worker-backend"),
         ops_test.model.integrate("loki:self-metrics-endpoint", "prometheus"),
         ops_test.model.integrate("loki:grafana-dashboards-provider", "grafana"),
         ops_test.model.integrate("loki:grafana-source", "grafana"),
@@ -94,7 +111,9 @@ async def test_integrate(ops_test: OpsTest):
             "flog",
             "minio",
             "s3",
-            "worker",
+            "worker-read",
+            "worker-write",
+            "worker-backend",
             "traefik",
         ],
         status="active",
@@ -124,7 +143,7 @@ async def test_metrics_endpoint(ops_test: OpsTest):
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
 async def test_logs_in_loki(ops_test: OpsTest):
-    """Check that the flog logs appear in Loki."""
+    """Check that the agent metrics appear in Loki."""
     result = await query_loki_series(ops_test)
     assert result
     assert result["data"][0]["juju_charm"] == "flog-k8s"
