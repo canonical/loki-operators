@@ -75,20 +75,9 @@ def test_build_chunk_store_config(loki_config: LokiConfig):
 def test_build_common_config(loki_config, coordinator, addresses_by_role, replication):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses_by_role
     common_config = loki_config._common_config(coordinator)
-    # HTTP endpoint
-    s3_data_http = {
-        "endpoint": "s3.com:port",
-        "access_key_id": "your_access_key",
-        "secret_access_key": "your_secret_key",
-        "bucket_name": "your_bucket",
-        "region": "your_region",
-        "insecure": "true",
-    }
     expected_config_http = {
         "path_prefix": "/loki",
         "replication_factor": replication,
-        "storage": {"s3": s3_data_http},
-        # "filesystem": {"chunks_directory": "/loki/chunks", "rules_directory": "/loki/rules"},
     }
     assert common_config == expected_config_http
 
@@ -176,26 +165,38 @@ def test_build_schema_config(loki_config: LokiConfig):
     expected_config = {
         "configs": [
             {
-                "from": "2020-10-24",
+                "from": "2024-08-06",
+                "object_store": "s3",
+                "schema": "v13",
+                "store": "tsdb",
                 "index": {"period": "24h", "prefix": "index_"},
-                "object_store": "filesystem",
-                "schema": "v11",
-                "store": "boltdb-shipper",
             }
         ]
     }
     assert schema_config == expected_config
 
 
-def test_build_storage_config(loki_config: LokiConfig):
-    storage_config = loki_config._storage_config()
+def test_build_storage_config(loki_config: LokiConfig, coordinator):
+    storage_config = loki_config._storage_config(coordinator)
     expected_config = {
-        "boltdb_shipper": {
-            "active_index_directory": "/loki/boltdb-shipper-active",
-            "shared_store": "filesystem",
-            "cache_location": "/loki/boltdb-shipper-cache",
+        "tsdb_shipper": {
+            "active_index_directory": "/loki/index",
+            "cache_location": "/loki/index_cache",
         },
-        "filesystem": {"directory": "/loki/chunks"},
+        "aws": {
+            "bucketnames": "your_bucket",
+            "endpoint": "s3.com:port",
+            "region": "your_region",
+            "access_key_id": "your_access_key",
+            "secret_access_key": "your_secret_key",
+            "insecure": "true",
+            "http_config": {
+                "idle_conn_timeout": "90s",
+                "response_header_timeout": "0s",
+                "insecure_skip_verify": False,
+            },
+            "s3forcepathstyle": True,
+        },
     }
     assert storage_config == expected_config
 
