@@ -9,6 +9,9 @@ show_missing = true
 asyncio_mode = "auto"
 minversion = "6.0"
 log_cli_level = "INFO"
+markers = [
+  "setup: tests setting up the juju model (select with '-m \"setup \"')"
+]
 
 # Formatting tools configuration
 [tool.black]
