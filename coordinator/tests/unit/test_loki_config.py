@@ -78,6 +78,7 @@ def test_build_common_config(loki_config, coordinator, addresses_by_role, replic
     expected_config_http = {
         "path_prefix": "/loki",
         "replication_factor": replication,
+        "compactor_grpc_address": coordinator._external_url,
     }
     assert common_config == expected_config_http
 
