@@ -132,6 +132,7 @@ class LokiConfig:
             "replication_factor": (
                 1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION
             ),
+            "compactor_grpc_address": coordinator._external_url,
         }
 
     def _compactor_config(self, retention_period: int) -> Dict[str, Any]:
