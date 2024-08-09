@@ -241,7 +241,7 @@ class LokiConfig:
 
     def _storage_config(self, coordinator: Coordinator) -> Dict[str, Any]:
         # Ref: https://grafana.com/docs/loki/latest/configure/examples/configuration-examples/#2-s3-cluster-exampleyaml
-        storage_config = {
+        storage_config: Dict[str, Any] = {
             "tsdb_shipper": {
                 "active_index_directory": ACTIVE_INDEX_DIR,
                 "cache_location": CACHE_DIR,
