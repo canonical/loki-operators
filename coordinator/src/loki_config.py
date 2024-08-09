@@ -254,16 +254,18 @@ class LokiConfig:
             secret_access_key = coordinator._s3_config["secret_access_key"]
             endpoint = coordinator._s3_config["endpoint"]
             bucket_name = coordinator._s3_config["bucket_name"]
+            insecure = coordinator._s3_config["insecure"]
+            region = coordinator._s3_config["region"]
 
             # The storage_config block configures one of many possible stores for both the index
             # and chunks. Which configuration to be picked should be defined in schema_config block.
             storage_config["aws"] = {
                 "bucketnames": bucket_name,
                 "endpoint": endpoint,
-                "region": "s3_region", # FIXME: Should region be configured?
+                "region": region,
                 "access_key_id": access_key,
                 "secret_access_key": secret_access_key,
-                "insecure": True, # FIXME: Should be True if running over HTTPS
+                "insecure": insecure,
                 "http_config": {
                     "idle_conn_timeout": "90s",
                     "response_header_timeout": "0s",
