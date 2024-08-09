@@ -113,13 +113,13 @@ async def test_integrate(ops_test: OpsTest):
             "flog",
             "minio",
             "s3",
+            "traefik",
             "worker-read",
             "worker-write",
             "worker-backend",
         ],
         status="active",
     )
-    await ops_test.model.wait_for_idle(apps=["traefik"], status="waiting")
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
