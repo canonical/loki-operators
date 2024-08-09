@@ -76,8 +76,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
         # FIXME: Should AlertmanagerConsumer it be in the Coordinator object?
         self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
-        grafana_source_scheme = "https" if self.coordinator.cert_handler.available else "http"  # type: ignore
-        grafana_source_url = self.coordinator.cluster.get_address_from_role("read")
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
