@@ -111,7 +111,7 @@ async def query_loki_series(ops_test: OpsTest, coordinator_app: str = "loki") ->
     response = requests.get(f"http://{loki_url}:8080/loki/api/v1/series")
     assert response.status_code == 200
     assert response.json()["status"] == "success"  # the query was successful
-    return response.json()["data"]["result"]
+    return response.json()
 
 
 async def get_traefik_proxied_endpoints(
