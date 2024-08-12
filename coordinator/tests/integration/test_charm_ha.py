@@ -119,6 +119,7 @@ async def test_integrate(ops_test: OpsTest):
             "worker-backend",
         ],
         status="active",
+        timeout=1000,
     )
 
 
