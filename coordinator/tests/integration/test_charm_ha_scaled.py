@@ -148,13 +148,12 @@ async def test_metrics_endpoint(ops_test: OpsTest):
     ]
     assert loki_targets
 
-
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
 async def test_logs_in_loki(ops_test: OpsTest):
     """Check that the agent metrics appear in Loki."""
-    result = await query_loki_series(ops_test, query='up{juju_charm=~"grafana-agent-k8s"}')
+    result = await query_loki_series(ops_test)
     assert result
-
+    assert result["data"][0]["juju_charm"] == "flog-k8s"
 
 async def test_traefik(ops_test: OpsTest):
     """Check the ingress integration, by checking if Loki is reachable through Traefik."""
