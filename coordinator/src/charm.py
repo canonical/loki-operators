@@ -54,7 +54,12 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self._nginx_prometheus_exporter_container = self.unit.get_container(
             "nginx-prometheus-exporter"
         )
-        self.ingress = IngressPerAppRequirer(charm=self, strip_prefix=True)
+        self.ingress = IngressPerAppRequirer(
+            charm=self,
+            port=urlparse(self.internal_url).port,
+            strip_prefix=True,
+            scheme=lambda: urlparse(self.internal_url).scheme,
+        )
         self.coordinator = Coordinator(
             charm=self,
             roles_config=LokiRolesConfig(),
