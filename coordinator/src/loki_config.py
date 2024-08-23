@@ -7,10 +7,10 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Set
+from typing import Any, Dict, Set
 
 import yaml
-from cosl.coordinated_workers.coordinator import Coordinator
+from cosl.coordinated_workers.coordinator import ClusterRolesConfig, Coordinator
 from cosl.coordinated_workers.worker import CERT_FILE, KEY_FILE
 
 logger = logging.getLogger(__name__)
@@ -57,17 +57,12 @@ CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
 ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
 CACHE_DIR = os.path.join(LOKI_DIR, "index_cache")
 
-
-class LokiRolesConfig:
-    """Define the configuration for Loki roles.
-
-    This object implements the ClusterRolesConfig Protocol.
-    """
-
-    roles: Iterable[str] = ROLES
-    meta_roles: Mapping[str, Iterable[str]] = META_ROLES
-    minimal_deployment: Iterable[str] = MINIMAL_DEPLOYMENT
-    recommended_deployment: Dict[str, int] = RECOMMENDED_DEPLOYMENT
+LOKI_ROLES_CONFIG = ClusterRolesConfig(
+    roles=ROLES,
+    meta_roles=META_ROLES,
+    minimal_deployment=MINIMAL_DEPLOYMENT,
+    recommended_deployment=RECOMMENDED_DEPLOYMENT,
+)
 
 
 class LokiConfig:

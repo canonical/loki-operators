@@ -28,7 +28,7 @@ from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerApp
 from cosl.coordinated_workers.coordinator import Coordinator
 from ops.model import ModelError
 
-from loki_config import LokiConfig, LokiRolesConfig
+from loki_config import LOKI_ROLES_CONFIG, LokiConfig
 from nginx_config import NginxConfig
 
 # Log messages can be retrieved using juju debug-log
@@ -64,7 +64,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         )
         self.coordinator = Coordinator(
             charm=self,
-            roles_config=LokiRolesConfig(),
+            roles_config=LOKI_ROLES_CONFIG,
             s3_bucket_name="loki",
             external_url=self.external_url,
             worker_metrics_port=8080,
