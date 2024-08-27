@@ -9,6 +9,7 @@ develop a new k8s charm using the Operator Framework:
 
 https://discourse.charmhub.io/t/4208
 """
+
 import glob
 import logging
 import os
@@ -25,9 +26,10 @@ from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.tempo_k8s.v1.charm_tracing import trace_charm
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from cosl.coordinated_workers.coordinator import Coordinator
+from ops.model import ModelError
+
 from loki_config import LokiConfig, LokiRolesConfig
 from nginx_config import NginxConfig
-from ops.model import ModelError
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)

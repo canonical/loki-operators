@@ -6,9 +6,10 @@
 import os
 import unittest
 
-from charm import LokiCoordinatorK8SOperatorCharm
 from ops.model import BlockedStatus
 from ops.testing import Harness
+
+from charm import LokiCoordinatorK8SOperatorCharm
 
 
 class TestCharm(unittest.TestCase):
