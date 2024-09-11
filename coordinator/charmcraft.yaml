@@ -11,8 +11,10 @@ summary: Loki coordinator
 description: |
     Loki coordinator.
 
-# TODO: Add documentation
-# docs: https://discourse.charmhub.io/t/mimir-coordinator-index/10531
+website: https://charmhub.io/loki-coordinator-k8s
+source: https://github.com/canonical/loki-coordinator-k8s-operator
+issues: https://github.com/canonical/loki-coordinator-k8s-operator/issues
+docs: https://discourse.charmhub.io/t/loki-coordinator-k8s-operator-docs-index/15491
 
 bases:
   - build-on:
