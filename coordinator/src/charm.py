@@ -65,9 +65,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.coordinator = Coordinator(
             charm=self,
             roles_config=LOKI_ROLES_CONFIG,
-            s3_bucket_name="loki",
             external_url=self.external_url,
-            worker_metrics_port=8080,
+            worker_metrics_port=3100,
             endpoints={
                 "certificates": "certificates",
                 "cluster": "loki-cluster",
