@@ -108,7 +108,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "max(loki_memberlist_client_cluster_node_health_score{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"})",
+          "expr": "max(loki_memberlist_client_cluster_node_health_score{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"})",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -173,7 +173,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "loki_build_info{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}",
+          "expr": "loki_build_info{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -246,7 +246,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
-      "description": "",
+      "description": "Each row corresponds to the size of ingested log lines. A lighter colour means more logs.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -275,8 +275,8 @@
         "cellGap": 1,
         "color": {
           "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
+          "fill": "green",
+          "mode": "opacity",
           "reverse": false,
           "scale": "exponential",
           "scheme": "Greens",
@@ -312,7 +312,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum by(le) (increase(loki_bytes_per_line_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
+          "expr": "sum by(le) (increase(loki_bytes_per_line_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "format": "heatmap",
           "legendFormat": "__auto",
           "range": true,
@@ -346,10 +346,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -386,7 +382,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "count by (juju_application) (group (up{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\"}) by (juju_unit, juju_application))",
+          "expr": "count by(juju_application) (group by(juju_unit, juju_application) (up{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}))",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -435,6 +431,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMin": 0,
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -511,7 +508,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "rate(loki_distributor_bytes_received_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])",
+          "expr": "rate(loki_distributor_bytes_received_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -533,6 +530,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Each time series shows the 95th-percentile (the maximum latency for *most* requests)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -619,7 +617,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "histogram_quantile(0.95, sum(rate(loki_request_duration_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0) by (le, method, route))",
+          "expr": "histogram_quantile(0.95, sum by(le, method, route) (rate(loki_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{method}} {{route}}",
@@ -636,6 +634,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Each time series shows the 95th-percentile (the maximum latency for *most* requests)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -722,7 +721,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "histogram_quantile(0.95, sum(rate(loki_s3_request_duration_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0) by (le, operation))",
+          "expr": "histogram_quantile(0.95, sum by(le, operation) (rate(loki_s3_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{operation}}",
@@ -739,6 +738,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Each time series shows the 95th-percentile (the maximum latency for *most* requests)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -824,7 +824,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(loki_ingester_client_request_duration_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0) by (le, operation))",
+          "expr": "histogram_quantile(0.95, sum by(le, operation) (rate(loki_ingester_client_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]) != 0))",
           "legendFormat": "{{operation}}",
           "range": true,
           "refId": "A"
@@ -838,7 +838,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
-      "description": "Rate of log messages created by Loki itself",
+      "description": "Rate of log messages produced by Loki itself",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -920,7 +920,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(loki_internal_log_messages_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (level)",
+          "expr": "sum by(level) (rate(loki_internal_log_messages_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{level}}",
@@ -936,6 +936,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Rate of Go panic errors produced by Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1014,7 +1015,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum (rate (loki_panic_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (juju_unit)",
+          "expr": "sum by(juju_unit) (rate(loki_panic_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1041,6 +1042,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Each time series shows the 95th-percentile (the maximum latency for *most* requests)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1120,13 +1122,13 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(loki_logql_querystats_latency_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (le, type))",
+          "expr": "histogram_quantile(0.95, sum by(le, type) (rate(loki_logql_querystats_latency_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "LogQL query Latency",
+      "title": "Query Latency",
       "type": "timeseries"
     },
     {
@@ -1134,6 +1136,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Distribution of the chunks download latency.\n\nEach time series shows the 95th-percentile (the maximum latency for *most* requests)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1213,13 +1216,13 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(loki_logql_querystats_chunk_download_latency_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (le, juju_unit))",
+          "expr": "histogram_quantile(0.95, sum by(le, juju_unit) (rate(loki_logql_querystats_chunk_download_latency_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Distribution of chunk downloads latency for LogQL queries",
+      "title": "Query Latency (Chunks)",
       "type": "timeseries"
     },
     {
@@ -1307,13 +1310,13 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(loki_index_request_duration_seconds_bucket{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (le, juju_unit))",
+          "expr": "histogram_quantile(0.95, sum by(le, juju_unit) (rate(loki_index_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Index Query Requests duration",
+      "title": "Index Query Requests",
       "type": "timeseries"
     },
     {
@@ -1400,7 +1403,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum (loki_inflight_requests{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\", route=~\"loki_api_v1_index_stats|loki_api_v1_labels|loki_api_v1_query_range|/frontendv2pb.FrontendForQuerier/QueryResult\"}) by (route, method)",
+          "expr": "sum by(route, method) (loki_inflight_requests{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\",route=~\"loki_api_v1_index_stats|loki_api_v1_labels|loki_api_v1_query_range|/frontendv2pb.FrontendForQuerier/QueryResult\"})",
           "legendFormat": "{{method}}: {{route}}",
           "range": true,
           "refId": "A"
@@ -1466,7 +1469,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "loki_querier_query_frontend_clients{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}",
+          "expr": "loki_querier_query_frontend_clients{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1569,7 +1572,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum (rate(loki_query_frontend_retries_sum{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (juju_unit)",
+          "expr": "sum by(juju_unit) (rate(loki_query_frontend_retries_sum{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1594,97 +1597,35 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "${prometheusds}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Inactive"
-                },
-                "1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Active"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
+        "type": "datasource",
+        "uid": "grafana"
       },
       "gridPos": {
-        "h": 7,
-        "w": 4,
+        "h": 5,
+        "w": 6,
         "x": 0,
         "y": 60
       },
-      "id": 42,
+      "id": 46,
       "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
         },
-        "textMode": "auto"
+        "content": "The **Write Ahead Log** (WAL) records incoming data and stores it temporarily in memory. \n\nIn the event of a crash, data will be recovered from the WAL.",
+        "mode": "markdown"
       },
       "pluginVersion": "9.5.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prometheusds}"
-          },
-          "editorMode": "code",
-          "expr": "loki_ingester_wal_replay_active{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Data Recovery from WAL",
-      "transformations": [
-        {
-          "id": "reduce",
-          "options": {}
-        }
-      ],
-      "type": "stat"
+      "title": "What is the WAL?",
+      "type": "text"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
-      "description": "The rate of data recovery from the WAL.",
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1739,9 +1680,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 10,
-        "x": 4,
+        "h": 9,
+        "w": 9,
+        "x": 6,
         "y": 60
       },
       "id": 38,
@@ -1765,7 +1706,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "rate(loki_ingester_wal_recovered_bytes_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])",
+          "expr": "rate(loki_ingester_wal_recovered_bytes_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
           "legendFormat": "{{juju_unit}}",
           "range": true,
           "refId": "A"
@@ -1834,9 +1775,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 10,
-        "x": 14,
+        "h": 9,
+        "w": 9,
+        "x": 15,
         "y": 60
       },
       "id": 39,
@@ -1860,7 +1801,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "rate(loki_ingester_wal_disk_full_failures_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])",
+          "expr": "rate(loki_ingester_wal_disk_full_failures_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
           "legendFormat": "{{juju_unit}}",
           "range": true,
           "refId": "A"
@@ -1868,6 +1809,89 @@
       ],
       "title": "WAL write failures",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheusds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "Inactive"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Active"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 65
+      },
+      "id": 42,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.5.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheusds}"
+          },
+          "editorMode": "code",
+          "expr": "loki_ingester_wal_replay_active{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Data Recovery from WAL",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {}
+        }
+      ],
+      "type": "stat"
     },
     {
       "datasource": {
@@ -1931,7 +1955,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 69
       },
       "id": 13,
       "options": {
@@ -1953,7 +1977,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum (loki_inflight_requests{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\", route=~\"loki_api_v1_push|/logproto.Pusher/Push|/logproto.Querier/GetChunkIDs|/logproto.Querier/GetStats|/logproto.Querier/Label|/logproto.Querier/Query|/logproto.Querier/QuerySample|/logproto.Querier/GetStreamRates\"}) by (route, method)",
+          "expr": "sum by(route, method) (loki_inflight_requests{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\",route=~\"loki_api_v1_push|/logproto.Pusher/Push|/logproto.Querier/GetChunkIDs|/logproto.Querier/GetStats|/logproto.Querier/Label|/logproto.Querier/Query|/logproto.Querier/QuerySample|/logproto.Querier/GetStreamRates\"})",
           "legendFormat": "{{method}}: {{route}}",
           "range": true,
           "refId": "A"
@@ -1968,7 +1992,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 75
+        "y": 77
       },
       "id": 9,
       "panels": [],
@@ -2015,7 +2039,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 76
+        "y": 78
       },
       "id": 43,
       "options": {
@@ -2040,7 +2064,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"} * 1000",
+          "expr": "loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"} * 1000",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2117,7 +2141,7 @@
         "h": 8,
         "w": 15,
         "x": 9,
-        "y": 76
+        "y": 78
       },
       "id": 44,
       "options": {
@@ -2140,7 +2164,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "rate(loki_boltdb_shipper_compact_tables_operation_total{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"}[$__rate_interval])",
+          "expr": "rate(loki_boltdb_shipper_compact_tables_operation_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
           "legendFormat": "{{juju_unit}} ({{status}})",
           "range": true,
           "refId": "A"
@@ -2189,7 +2213,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 80
+        "y": 82
       },
       "id": 45,
       "options": {
@@ -2214,7 +2238,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "loki_compactor_apply_retention_last_successful_run_timestamp_seconds{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\"} * 1000",
+          "expr": "loki_compactor_apply_retention_last_successful_run_timestamp_seconds{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"} * 1000",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2295,7 +2319,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 84
+        "y": 86
       },
       "id": 15,
       "options": {
@@ -2317,7 +2341,7 @@
             "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "sum (loki_inflight_requests{juju_charm=\"loki-worker-k8s\", juju_model=~\"$juju_model\", juju_model_uuid=~\"$juju_model_uuid\", juju_application=~\"$juju_application\", juju_unit=~\"$juju_unit\", route=~\"/schedulerpb.SchedulerForFrontend/FrontendLoop|/schedulerpb.SchedulerForQuerier/QuerierLoop\"}) by (route, method)",
+          "expr": "sum by(route, method) (loki_inflight_requests{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\",route=~\"/schedulerpb.SchedulerForFrontend/FrontendLoop|/schedulerpb.SchedulerForQuerier/QuerierLoop\"})",
           "legendFormat": "{{method}}: {{route}}",
           "range": true,
           "refId": "A"
@@ -2327,7 +2351,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": false,
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -2496,13 +2520,13 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-12h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Loki HA Overview",
   "uid": "c54ac153-8505-4b32-ab44-34cfc75415bd",
-  "version": 14,
+  "version": 1,
   "weekStart": ""
 }
