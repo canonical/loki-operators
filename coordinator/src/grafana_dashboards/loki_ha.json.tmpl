@@ -39,6 +39,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Report \"Healthy\" if all the nodes in the memberlist are reporting \"Healthy\".",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -114,7 +115,7 @@
           "refId": "A"
         }
       ],
-      "title": "Cluster Health (memberlist)",
+      "title": "Cluster Health",
       "type": "stat"
     },
     {
@@ -244,83 +245,110 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${prometheusds}"
+        "uid": "P55C85133CC058AEE"
       },
-      "description": "Each row corresponds to the size of ingested log lines. A lighter colour means more logs.",
+      "description": "Distribution of bytes processed per second for LogQL queries.\n\nEach time series shows the 95th-percentile (the maximum data rate for *most* queries)",
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          }
+          },
+          "mappings": [
+            {
+              "options": {
+                "NaN": {
+                  "index": 0,
+                  "text": "-"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Bps"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 14,
         "x": 10,
         "y": 1
       },
-      "id": 7,
-      "maxDataPoints": 25,
+      "id": 47,
       "options": {
-        "calculate": false,
-        "cellGap": 1,
-        "color": {
-          "exponent": 0.5,
-          "fill": "green",
-          "mode": "opacity",
-          "reverse": false,
-          "scale": "exponential",
-          "scheme": "Greens",
-          "steps": 64
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-9
-        },
         "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
+          "calcs": [
+            "last",
+            "min",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last",
+          "sortDesc": true
         },
         "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "decbytes"
+          "mode": "single",
+          "sort": "none"
         }
       },
-      "pluginVersion": "9.5.3",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${prometheusds}"
+            "uid": "P55C85133CC058AEE"
           },
           "editorMode": "code",
-          "expr": "sum by(le) (increase(loki_bytes_per_line_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
-          "format": "heatmap",
+          "expr": "histogram_quantile(0.95, sum(rate(loki_logql_querystats_bytes_processed_per_seconds_bucket{juju_charm=\"loki-worker-k8s\"}[$__rate_interval])) by (le, juju_unit))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "# of Ingested Logs (by size)",
-      "type": "heatmap"
+      "title": "Queried Logs",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -353,7 +381,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 12,
         "w": 10,
         "x": 0,
         "y": 6
@@ -479,7 +507,7 @@
         "h": 6,
         "w": 14,
         "x": 10,
-        "y": 7
+        "y": 6
       },
       "id": 11,
       "options": {
@@ -524,6 +552,87 @@
         }
       ],
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheusds}"
+      },
+      "description": "Each row corresponds to the size of ingested log lines. A lighter colour means more logs.\n\nHover over the cells to see the exact bucket: logs whose size fits in that bucket will be counted there.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 14,
+        "x": 10,
+        "y": 12
+      },
+      "id": 7,
+      "maxDataPoints": 25,
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "exponent": 0.5,
+          "fill": "green",
+          "mode": "opacity",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Greens",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "decbytes"
+        }
+      },
+      "pluginVersion": "9.5.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheusds}"
+          },
+          "editorMode": "code",
+          "expr": "sum by(le) (increase(loki_bytes_per_line_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "# of Ingested Logs (by size)",
+      "type": "heatmap"
     },
     {
       "datasource": {
@@ -588,7 +697,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 18
       },
       "id": 35,
       "options": {
@@ -692,7 +801,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 26
       },
       "id": 34,
       "options": {
@@ -796,7 +905,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 26
       },
       "id": 18,
       "options": {
@@ -895,7 +1004,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 29
+        "y": 34
       },
       "id": 16,
       "options": {
@@ -993,7 +1102,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 29
+        "y": 34
       },
       "id": 29,
       "options": {
@@ -1030,7 +1139,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 40
       },
       "id": 8,
       "panels": [],
@@ -1100,7 +1209,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 41
       },
       "id": 24,
       "options": {
@@ -1194,7 +1303,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 49
       },
       "id": 23,
       "options": {
@@ -1288,7 +1397,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 49
       },
       "id": 17,
       "options": {
@@ -1381,7 +1490,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 57
       },
       "id": 14,
       "options": {
@@ -1444,7 +1553,7 @@
         "h": 7,
         "w": 5,
         "x": 12,
-        "y": 52
+        "y": 57
       },
       "id": 30,
       "options": {
@@ -1550,7 +1659,7 @@
         "h": 7,
         "w": 7,
         "x": 17,
-        "y": 52
+        "y": 57
       },
       "id": 33,
       "options": {
@@ -1588,7 +1697,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 64
       },
       "id": 4,
       "panels": [],
@@ -1604,7 +1713,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 60
+        "y": 65
       },
       "id": 46,
       "options": {
@@ -1683,7 +1792,7 @@
         "h": 9,
         "w": 9,
         "x": 6,
-        "y": 60
+        "y": 65
       },
       "id": 38,
       "options": {
@@ -1778,7 +1887,7 @@
         "h": 9,
         "w": 9,
         "x": 15,
-        "y": 60
+        "y": 65
       },
       "id": 39,
       "options": {
@@ -1853,7 +1962,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 65
+        "y": 70
       },
       "id": 42,
       "options": {
@@ -1955,7 +2064,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 74
       },
       "id": 13,
       "options": {
@@ -1992,7 +2101,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 82
       },
       "id": 9,
       "panels": [],
@@ -2039,7 +2148,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 78
+        "y": 83
       },
       "id": 43,
       "options": {
@@ -2141,7 +2250,7 @@
         "h": 8,
         "w": 15,
         "x": 9,
-        "y": 78
+        "y": 83
       },
       "id": 44,
       "options": {
@@ -2213,7 +2322,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 82
+        "y": 87
       },
       "id": 45,
       "options": {
@@ -2319,7 +2428,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 91
       },
       "id": 15,
       "options": {
@@ -2351,7 +2460,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -2520,7 +2629,7 @@
     ]
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
