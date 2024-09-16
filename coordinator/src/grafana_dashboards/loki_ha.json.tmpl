@@ -241,9 +241,8 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P55C85133CC058AEE"
+        "uid": "${prometheusds}"
       },
-      "description": "Distribution of bytes processed per second for LogQL queries.\n\nEach time series shows the 95th-percentile (the maximum data rate for *most* queries)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -254,6 +253,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMin": 0,
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -279,24 +279,17 @@
               "mode": "off"
             }
           },
-          "mappings": [
-            {
-              "options": {
-                "NaN": {
-                  "index": 0,
-                  "text": "-"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "min": 0,
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
               }
             ]
           },
@@ -305,12 +298,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 7,
         "w": 14,
         "x": 10,
         "y": 1
       },
-      "id": 47,
+      "id": 11,
       "options": {
         "legend": {
           "calcs": [
@@ -334,16 +327,24 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P55C85133CC058AEE"
+            "uid": "${prometheusds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(loki_logql_querystats_bytes_processed_per_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (le, juju_unit))",
+          "expr": "rate(loki_distributor_bytes_received_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Queried Logs",
+      "title": "Ingested Logs (uncompressed)",
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "valueLabel": "juju_unit"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
@@ -377,7 +378,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 9,
         "w": 10,
         "x": 0,
         "y": 6
@@ -445,115 +446,6 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 14,
-        "x": 10,
-        "y": 6
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "min",
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "sortBy": "Last",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prometheusds}"
-          },
-          "editorMode": "code",
-          "expr": "rate(loki_distributor_bytes_received_total{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Ingested Logs (uncompressed)",
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "valueLabel": "juju_unit"
-          }
-        }
-      ],
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${prometheusds}"
-      },
       "description": "Each row corresponds to the size of ingested log lines.\nHover over the cells to see the exact bucket: logs whose size fits in that bucket will be counted there.",
       "fieldConfig": {
         "defaults": {
@@ -571,10 +463,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 14,
         "x": 10,
-        "y": 12
+        "y": 8
       },
       "id": 7,
       "maxDataPoints": 25,
@@ -693,7 +585,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 15
       },
       "id": 35,
       "options": {
@@ -797,7 +689,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 26
+        "y": 23
       },
       "id": 34,
       "options": {
@@ -901,7 +793,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 26
+        "y": 23
       },
       "id": 18,
       "options": {
@@ -1000,7 +892,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 34
+        "y": 31
       },
       "id": 16,
       "options": {
@@ -1098,7 +990,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 34
+        "y": 31
       },
       "id": 29,
       "options": {
@@ -1135,12 +1027,214 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 37
       },
       "id": 8,
       "panels": [],
       "title": "Read",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P55C85133CC058AEE"
+      },
+      "description": "Distribution of bytes processed per second for LogQL queries.\n\nEach time series shows the 95th-percentile (the maximum data rate for *most* queries)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "NaN": {
+                  "index": 0,
+                  "text": "-"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 38
+      },
+      "id": 47,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "min",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P55C85133CC058AEE"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(loki_logql_querystats_bytes_processed_per_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])) by (le, juju_unit))",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Queried Logs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prometheusds}"
+      },
+      "description": "Time spent in serving index query requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 38
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prometheusds}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by(le, juju_unit) (rate(loki_index_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])))",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Index Query Requests",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1203,9 +1297,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 41
+        "y": 46
       },
       "id": 24,
       "options": {
@@ -1298,8 +1392,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 49
+        "x": 12,
+        "y": 46
       },
       "id": 23,
       "options": {
@@ -1327,101 +1421,7 @@
           "refId": "A"
         }
       ],
-      "title": "Query Latency (Chunks)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${prometheusds}"
-      },
-      "description": "Time spent in serving index query requests.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 49
-      },
-      "id": 17,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prometheusds}"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by(le, juju_unit) (rate(loki_index_request_duration_seconds_bucket{juju_application=~\"$juju_application\",juju_charm=\"loki-worker-k8s\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"}[$__rate_interval])))",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Index Query Requests",
+      "title": "Query Latency (chunks)",
       "type": "timeseries"
     },
     {
@@ -1486,7 +1486,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 57
+        "y": 54
       },
       "id": 14,
       "options": {
@@ -1522,7 +1522,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
-      "description": "Current number of clients connected to query-frontend",
+      "description": "Current number of clients connected to query-frontend.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1549,7 +1549,7 @@
         "h": 7,
         "w": 5,
         "x": 12,
-        "y": 57
+        "y": 54
       },
       "id": 30,
       "options": {
@@ -1580,7 +1580,7 @@
           "refId": "A"
         }
       ],
-      "title": "# of clients (Query-Frontend)",
+      "title": "# of active clients",
       "transformations": [
         {
           "id": "reduce",
@@ -1598,6 +1598,7 @@
         "type": "prometheus",
         "uid": "${prometheusds}"
       },
+      "description": "Number of retries for requests to query-frontend.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1655,7 +1656,7 @@
         "h": 7,
         "w": 7,
         "x": 17,
-        "y": 57
+        "y": 54
       },
       "id": 33,
       "options": {
@@ -1683,7 +1684,7 @@
           "refId": "A"
         }
       ],
-      "title": "# of request retries (Query-Frontend)",
+      "title": "# of request retries",
       "transformations": [],
       "type": "timeseries"
     },
@@ -1693,7 +1694,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 64
+        "y": 61
       },
       "id": 4,
       "panels": [],
@@ -1709,7 +1710,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 65
+        "y": 62
       },
       "id": 46,
       "options": {
@@ -1788,7 +1789,7 @@
         "h": 9,
         "w": 9,
         "x": 6,
-        "y": 65
+        "y": 62
       },
       "id": 38,
       "options": {
@@ -1883,7 +1884,7 @@
         "h": 9,
         "w": 9,
         "x": 15,
-        "y": 65
+        "y": 62
       },
       "id": 39,
       "options": {
@@ -1958,7 +1959,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 70
+        "y": 67
       },
       "id": 42,
       "options": {
@@ -2060,7 +2061,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 71
       },
       "id": 13,
       "options": {
@@ -2097,7 +2098,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 79
       },
       "id": 9,
       "panels": [],
@@ -2144,7 +2145,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 83
+        "y": 80
       },
       "id": 43,
       "options": {
@@ -2246,7 +2247,7 @@
         "h": 8,
         "w": 15,
         "x": 9,
-        "y": 83
+        "y": 80
       },
       "id": 44,
       "options": {
@@ -2318,7 +2319,7 @@
         "h": 4,
         "w": 9,
         "x": 0,
-        "y": 87
+        "y": 84
       },
       "id": 45,
       "options": {
@@ -2424,7 +2425,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 91
+        "y": 88
       },
       "id": 15,
       "options": {
@@ -2456,7 +2457,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
