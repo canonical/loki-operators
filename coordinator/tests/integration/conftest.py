@@ -33,7 +33,7 @@ def timed_memoizer(func):
     return wrapper
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 @timed_memoizer
 async def loki_charm(ops_test: OpsTest) -> str:
     """Loki charm used for integration testing."""
