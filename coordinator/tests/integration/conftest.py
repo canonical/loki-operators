@@ -4,6 +4,7 @@
 
 import functools
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime
 
@@ -36,6 +37,10 @@ def timed_memoizer(func):
 @timed_memoizer
 async def loki_charm(ops_test: OpsTest) -> str:
     """Loki charm used for integration testing."""
-    charm = await ops_test.build_charm(".")
+    # Use the specified charm if set (used for testing the worker)
+    if charm := os.getenv("LOKI_CHARM"):
+        return charm
+
+    charm = await ops_test.build_charm(".", verbosity="verbose")
     assert charm
     return str(charm)
