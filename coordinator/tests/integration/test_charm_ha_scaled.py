@@ -42,7 +42,7 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
         # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
         ops_test.model.deploy(
             "minio",
-            channel="latest/stable",
+            channel="ckf-1.9/stable",
             config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
             trust=True,
         ),

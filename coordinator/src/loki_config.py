@@ -7,7 +7,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Set
+from typing import Any, Dict, Tuple
 
 import yaml
 from cosl.coordinated_workers.coordinator import ClusterRolesConfig, Coordinator
@@ -176,7 +176,9 @@ class LokiConfig:
             "retention_period": f"{retention_period}d",
         }
 
-    def _memberlist_config(self, cluster_label: str, worker_addresses: Set[str]) -> Dict[str, Any]:
+    def _memberlist_config(
+        self, cluster_label: str, worker_addresses: Tuple[str, ...]
+    ) -> Dict[str, Any]:
         return {
             "cluster_label": cluster_label,
             "join_members": list(worker_addresses),
