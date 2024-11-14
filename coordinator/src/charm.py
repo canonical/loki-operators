@@ -15,7 +15,7 @@ import logging
 import os
 import shutil
 import socket
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import cosl.coordinated_workers.nginx
@@ -23,7 +23,8 @@ import ops
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
-from charms.tempo_k8s.v1.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.tracing import charm_tracing_config
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from cosl.coordinated_workers.coordinator import Coordinator
 from ops.model import ModelError
@@ -40,8 +41,8 @@ CONSOLIDATED_ALERT_RULES_PATH = "./src/prometheus_alert_rules/consolidated_rules
 
 
 @trace_charm(
-    tracing_endpoint="tempo_endpoint",
-    server_cert="server_cert_path",
+    tracing_endpoint="charm_tracing_endpoint",
+    server_cert="server_ca_cert",
     extra_types=[
         Coordinator,
     ],
@@ -73,11 +74,17 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "grafana-dashboards": "grafana-dashboards-provider",
                 "logging": "logging-consumer",
                 "metrics": "self-metrics-endpoint",
-                "tracing": "tracing",
+                "charm-tracing": "charm-tracing",
+                "workload-tracing": "workload-tracing",
                 "s3": "s3",
             },
             nginx_config=NginxConfig().config,
             workers_config=LokiConfig().config,
+            workload_tracing_protocols=["jaeger_thrift_http"],
+        )
+
+        self.charm_tracing_endpoint, self.server_ca_cert = charm_tracing_config(
+            self.coordinator.charm_tracing, cosl.coordinated_workers.nginx.CA_CERT_PATH
         )
 
         # FIXME: Should AlertmanagerConsumer it be in the Coordinator object?
@@ -132,19 +139,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def hostname(self) -> str:
         """Unit's hostname."""
         return socket.getfqdn()
-
-    @property
-    def tempo_endpoint(self) -> Optional[str]:
-        """Tempo endpoint for charm tracing."""
-        if self.coordinator.tracing.is_ready():
-            return self.coordinator.tracing.get_endpoint(protocol="otlp_http")
-        else:
-            return None
-
-    @property
-    def server_cert_path(self) -> Optional[str]:
-        """Server certificate path for tls tracing."""
-        return cosl.coordinated_workers.nginx.CERT_PATH
 
     @property
     def internal_url(self) -> str:
