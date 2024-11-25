@@ -58,6 +58,39 @@ LOCATIONS_WRITE: List[Dict] = [
     },
 ]
 
+LOCATIONS_BACKEND: List[Dict] = [
+    {
+        "directive": "location",
+        "args": ["=", "/loki/api/v1/rules"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://backend"],
+            },
+        ],
+    },
+    {
+        "directive": "location",
+        "args": ["=", "/prometheus"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://backend"],
+            },
+        ],
+    },
+    {
+        "directive": "location",
+        "args": ["=", "/api/v1/rules"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://backend/loki/api/v1/rules"],
+            },
+        ],
+    },
+]
+
 # Locations shared by all the workers, regardless of the role
 LOCATIONS_WORKER: List[Dict] = [
     {
@@ -228,10 +261,12 @@ class NginxConfig:
         nginx_locations = LOCATIONS_BASIC.copy()
         roles = addresses_by_role.keys()
 
-        if "read" in roles:
-            nginx_locations.extend(LOCATIONS_READ)
         if "write" in roles:
             nginx_locations.extend(LOCATIONS_WRITE)
+        if "backend" in roles:
+            nginx_locations.extend(LOCATIONS_BACKEND)
+        if "read" in roles:
+            nginx_locations.extend(LOCATIONS_READ)
         if roles:
             nginx_locations.extend(LOCATIONS_WORKER)
         return nginx_locations

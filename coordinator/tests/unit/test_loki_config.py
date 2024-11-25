@@ -79,6 +79,22 @@ def test_build_common_config(loki_config, coordinator, addresses_by_role, replic
         "path_prefix": "/loki",
         "replication_factor": replication,
         "compactor_grpc_address": coordinator._external_url,
+        "storage": {
+            "s3": {
+                "bucketnames": "your_bucket",
+                "endpoint": "s3.com:port",
+                "region": "your_region",
+                "access_key_id": "your_access_key",
+                "secret_access_key": "your_secret_key",
+                "insecure": "true",
+                "http_config": {
+                    "idle_conn_timeout": "90s",
+                    "response_header_timeout": "0s",
+                    "insecure_skip_verify": False,
+                },
+                "s3forcepathstyle": True,
+            }
+        },
     }
     assert common_config == expected_config_http
 

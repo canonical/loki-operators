@@ -10,16 +10,15 @@ develop a new k8s charm using the Operator Framework:
 https://discourse.charmhub.io/t/4208
 """
 
-import glob
+import hashlib
 import logging
-import os
-import shutil
 import socket
-from typing import Any
+from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urlparse
 
 import cosl.coordinated_workers.nginx
 import ops
+import yaml
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
@@ -28,6 +27,7 @@ from charms.tempo_coordinator_k8s.v0.tracing import charm_tracing_config
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from cosl.coordinated_workers.coordinator import Coordinator
 from ops.model import ModelError
+from ops.pebble import Error as PebbleError
 
 from loki_config import LOKI_ROLES_CONFIG, LokiConfig
 from nginx_config import NginxConfig
@@ -35,9 +35,8 @@ from nginx_config import NginxConfig
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
 
-NGINX_ORIGINAL_ALERT_RULES_PATH = "./src/prometheus_alert_rules/nginx"
-WORKER_ORIGINAL_ALERT_RULES_PATH = "./src/prometheus_alert_rules/loki_workers"
-CONSOLIDATED_ALERT_RULES_PATH = "./src/prometheus_alert_rules/consolidated_rules"
+RULES_DIR = "/etc/loki-alerts/rules"
+ALERTS_HASH_PATH = "/etc/loki-alerts/alerts.sha256"
 
 
 @trace_charm(
@@ -63,6 +62,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             strip_prefix=True,
             scheme=lambda: urlparse(self.internal_url).scheme,
         )
+        self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
         self.coordinator = Coordinator(
             charm=self,
             roles_config=LOKI_ROLES_CONFIG,
@@ -79,7 +79,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "s3": "s3",
             },
             nginx_config=NginxConfig().config,
-            workers_config=LokiConfig().config,
+            workers_config=LokiConfig(
+                alertmanager_urls=self.alertmanager_consumer.get_cluster_info()
+            ).config,
             workload_tracing_protocols=["jaeger_thrift_http"],
         )
 
@@ -87,8 +89,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             self.coordinator.charm_tracing, cosl.coordinated_workers.nginx.CA_CERT_PATH
         )
 
-        # FIXME: Should AlertmanagerConsumer it be in the Coordinator object?
-        self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
@@ -97,7 +97,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             secure_extra_fields={"httpHeaderValue1": "anonymous"},
             refresh_event=[self.coordinator.cluster.on.changed],
         )
-        self._consolidate_nginx_rules()
 
         external_url = urlparse(self.external_url)
         self.loki_provider = LokiPushApiProvider(
@@ -108,11 +107,15 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             path=f"{external_url.path}/loki/api/v1/push",
         )
 
+        if self._nginx_container.can_connect():
+            self._set_alerts()
+
         ######################################
         # === EVENT HANDLER REGISTRATION === #
         ######################################
         self.framework.observe(self.ingress.on.ready, self._on_ingress_ready)
         self.framework.observe(self.ingress.on.revoked, self._on_ingress_revoked)
+        self.framework.observe(self.on.nginx_pebble_ready, self._on_pebble_ready)
 
     ##########################
     # === EVENT HANDLERS === #
@@ -130,6 +133,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         This event refreshes the PrometheusRemoteWriteProvider address.
         """
         logger.info("Ingress for app revoked")
+
+    def _on_pebble_ready(self, _) -> None:
+        """Make sure the `lokitool` binary is in the workload container."""
+        self._ensure_lokitool()
 
     ######################
     # === PROPERTIES === #
@@ -162,12 +169,89 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     # === UTILITY METHODS === #
     ###########################
 
-    # FIXME: Move the alert_rules handling to Coordinator
-    def _consolidate_nginx_rules(self):
-        os.makedirs(CONSOLIDATED_ALERT_RULES_PATH, exist_ok=True)
-        os.makedirs(CONSOLIDATED_ALERT_RULES_PATH, exist_ok=True)
-        for filename in glob.glob(os.path.join(NGINX_ORIGINAL_ALERT_RULES_PATH, "*.*")):
-            shutil.copy(filename, f"{CONSOLIDATED_ALERT_RULES_PATH}/")
+    def _pull(self, path: str) -> Optional[str]:
+        """Pull file from container (without raising pebble errors).
+
+        Returns:
+            File contents if exists; None otherwise.
+        """
+        try:
+            return cast(str, self._nginx_container.pull(path, encoding="utf-8").read())
+        except (FileNotFoundError, PebbleError):
+            # Drop FileNotFoundError https://github.com/canonical/operator/issues/896
+            return None
+
+    def _push(self, path: str, contents: Any):
+        """Push file to container, creating subdirs as necessary."""
+        self._nginx_container.push(path, contents, make_dirs=True, encoding="utf-8")
+
+    def _push_alert_rules(self, alerts: Dict[str, Any]) -> List[str]:
+        """Pushes alert rules from a rules file to the nginx container.
+
+        Args:
+            alerts: a dictionary of alert rule files, fetched from
+                either a metrics consumer or a remote write provider.
+        """
+        paths = []
+        for topology_identifier, rules_file in alerts.items():
+            filename = f"juju_{topology_identifier}.rules"
+            path = f"{RULES_DIR}/{filename}"
+
+            rules = yaml.safe_dump(rules_file)
+
+            self._push(path, rules)
+            paths.append(path)
+            logger.debug("Updated alert rules file %s", filename)
+
+        return paths
+
+    def _ensure_lokitool(self):
+        """Copy the `lokitool` binary to the workload container."""
+        if self._nginx_container.exists("/usr/bin/mimirtool"):
+            return
+        with open("lokitool", "rb") as f:
+            self._nginx_container.push("/usr/bin/lokitool", source=f, permissions=0o744)
+
+    def _set_alerts(self):
+        """Create alert rule files for all Loki consumers."""
+
+        def sha256(hashable: Any) -> str:
+            """Use instead of the builtin hash() for repeatable values."""
+            if isinstance(hashable, str):
+                hashable = hashable.encode("utf-8")
+            return hashlib.sha256(hashable).hexdigest()
+
+        # Get mimirtool if this is the first execution
+        self._ensure_lokitool()
+
+        loki_alerts = self.loki_provider.alerts
+        alerts_hash = sha256(str(loki_alerts))
+        alert_rules_changed = alerts_hash != self._pull(ALERTS_HASH_PATH)
+
+        if alert_rules_changed:
+            # Update the alert rules files on disk
+            self._nginx_container.remove_path(RULES_DIR, recursive=True)
+            rules_file_paths: List[str] = self._push_alert_rules(loki_alerts)
+            self._push(ALERTS_HASH_PATH, alerts_hash)
+            # Push the alert rules to the Mimir cluster (persisted in s3)
+            logger.info(
+                f"lokitool rules sync {' '.join(rules_file_paths)} --address={self.external_url}/loki --id=fake"
+            )
+            lokitool_output = self._nginx_container.pebble.exec(
+                [
+                    "lokitool",
+                    "rules",
+                    "sync",
+                    *rules_file_paths,
+                    f"--address={self.external_url}",
+                    "--id=fake",  # multitenancy is disabled, the default tenant is 'fake'
+                ],
+                encoding="utf-8",
+            )
+            if lokitool_output.stdout:
+                logger.info(f"lokitool: {lokitool_output.stdout.read().strip()}")
+            if lokitool_output.stderr:
+                logger.error(f"lokitool (err): {lokitool_output.stderr.read().strip()}")
 
 
 if __name__ == "__main__":  # pragma: nocover
