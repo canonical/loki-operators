@@ -80,6 +80,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "s3": "s3",
                 "send-datasource": "send-datasource",
                 "receive-datasource": None,
+                "catalogue": None,
             },
             nginx_config=NginxConfig().config,
             workers_config=LokiConfig(
@@ -205,10 +206,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def _ensure_lokitool(self):
         """Copy the `lokitool` binary to the workload container."""
-        if self._nginx_container.exists("/usr/bin/lokitool"):
-            return
-        with open("lokitool", "rb") as f:
-            self._nginx_container.push("/usr/bin/lokitool", source=f, permissions=0o744)
+        if self._nginx_container.can_connect():
+            if self._nginx_container.exists("/usr/bin/lokitool"):
+                return
+            with open("lokitool", "rb") as f:
+                self._nginx_container.push("/usr/bin/lokitool", source=f, permissions=0o744)
 
     def _set_alerts(self):
         """Create alert rule files for all Loki consumers."""
