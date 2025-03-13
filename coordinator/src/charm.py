@@ -205,24 +205,28 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         return paths
 
     def _ensure_lokitool(self):
-        """Copy the `lokitool` binary to the workload container."""
-        if self._nginx_container.can_connect():
-            if self._nginx_container.exists("/usr/bin/lokitool"):
-                return
-            with open("lokitool", "rb") as f:
-                self._nginx_container.push("/usr/bin/lokitool", source=f, permissions=0o744)
+        """Copy the `lokitool` binary to the `nginx` container if it's not there already.
+
+        Assumes the nginx container can connect.
+        """
+        if self._nginx_container.exists("/usr/bin/lokitool"):
+            return
+        with open("lokitool", "rb") as f:
+            self._nginx_container.push("/usr/bin/lokitool", source=f, permissions=0o744)
 
     def _set_alerts(self):
-        """Create alert rule files for all Loki consumers."""
+        """Create alert rule files for all Loki consumers.
+
+        Assumes the nginx container can connect.
+        """
+        # obtain lokitool if this is the first execution
+        self._ensure_lokitool()
 
         def sha256(hashable: Any) -> str:
             """Use instead of the builtin hash() for repeatable values."""
             if isinstance(hashable, str):
                 hashable = hashable.encode("utf-8")
             return hashlib.sha256(hashable).hexdigest()
-
-        # Get mimirtool if this is the first execution
-        self._ensure_lokitool()
 
         loki_alerts = self.loki_provider.alerts
         alerts_hash = sha256(str(loki_alerts))
@@ -275,7 +279,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # regardless of the event we are processing.
         if self._nginx_container.can_connect():
             self._set_alerts()
-        self._ensure_lokitool()
+
         self._update_datasource_exchange()
 
 
