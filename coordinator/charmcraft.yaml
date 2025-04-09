@@ -3,46 +3,40 @@
 
 name: loki-coordinator-k8s
 type: charm
-assumes:
-  - k8s-api
-  - juju >= 3.4.5
-
 summary: Loki coordinator
 description: |
     Loki coordinator.
 
 links:
+  documentation: https://discourse.charmhub.io/t/loki-coordinator-k8s-operator-docs-index/15491
   website: https://charmhub.io/loki-coordinator-k8s
   source: https://github.com/canonical/loki-coordinator-k8s-operator
   issues: https://github.com/canonical/loki-coordinator-k8s-operator/issues
-  documentation: https://discourse.charmhub.io/t/loki-coordinator-k8s-operator-docs-index/15491
 
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-    run-on:
-    - name: ubuntu
-      channel: "22.04"
+assumes:
+  - k8s-api
+  - juju >= 3.4.5
+
+platforms:
+  ubuntu@22.04:amd64:
+  ubuntu@24.04:amd64:
 
 parts:
   charm:
-    charm-binary-python-packages:
-      - pydantic>2.0
-      - pydantic-core
-
-      # For v2.tls_certificates
-      - cryptography
-      - jsonschema
-
+    source: .
+    plugin: uv
+    build-packages: [git]
+    build-snaps: [astral-uv]
+    override-build: |
+      craftctl default
+      git describe --always > $CRAFT_PART_INSTALL/version
   cos-tool:
     plugin: dump
-    source: .
-    build-packages:
-      - curl
-    override-pull: |
-      curl -L -O https://github.com/canonical/cos-tool/releases/latest/download/cos-tool-${CRAFT_TARGET_ARCH}
-      chmod +x cos-tool-*
+    source: https://github.com/canonical/cos-tool/releases/latest/download/cos-tool-${CRAFT_ARCH_BUILD_FOR}
+    source-type: file
+    permissions:
+      - path: cos-tool-${CRAFT_ARCH_BUILD_FOR}
+        mode: "755"
   lokitool:
     plugin: dump
     source: .
@@ -53,7 +47,7 @@ parts:
       curl -fLo lokitool.zip https://github.com/grafana/loki/releases/download/v3.2.1/lokitool-linux-${CRAFT_TARGET_ARCH}.zip
       unzip lokitool.zip && rm lokitool.zip
       mv lokitool-linux-${CRAFT_TARGET_ARCH} lokitool
-      chmod +x lokitool
+      chmod 755 lokitool
 
 containers:
   nginx:
@@ -71,81 +65,88 @@ resources:
     description: OCI image for nginx-prometheus-exporter
     upstream-source: nginx/nginx-prometheus-exporter:1.1.0
 
+provides:
+  logging:
+    interface: loki_push_api
+    optional: true
+    description: |
+      The coordinator can receive logs from other applications.
+  loki-cluster:
+    interface: loki_cluster
+    optional: true
+    description: |
+      The coordinator sends the Loki configuration to the workers, obtaining
+      the roles they are configured to take on and their addressing information.
+  receive-remote-write:
+    interface: prometheus_remote_write
+    optional: true
+    description: |
+      Integration to receive metrics from other charms to a 
+      Prometheus-remote-write-compatible endpoint.
+  grafana-dashboards-provider:
+    interface: grafana_dashboard
+    optional: true
+    description: |
+      Forward workers' built-in dashboards to grafana
+      (the coordinator, not the worker, owns all dashboards).
+  grafana-source:
+    interface: grafana_datasource
+    optional: true
+  self-metrics-endpoint:
+    interface: prometheus_scrape
+    optional: true
+    description: |
+      The coordinator provides scrape jobs for itself and for the workers.
+  send-datasource:
+    interface: grafana_datasource_exchange
+    optional: true
+    description: |
+      Integration to share with other COS components this charm's datasources, and receive theirs.
+
 requires:
   alertmanager:
     interface: alertmanager_dispatch
-
+    optional: true
+    description: |
+      Integrates with an Alertmanager to send notifications when alert rules are triggered.
   s3:
     interface: s3
+    optional: true
     limit: 1
     description: |
       The coordinator obtains and shares storage details with workers, enabling Loki's access to an S3 bucket for data storage.
-
   logging-consumer:
     interface: loki_push_api
+    optional: true
     description: |
       Forward workers' built-in logging rules to the external Loki
       (the coordinator, not the worker, owns all rule files).
       Obtain rules and Loki's API endpoint to later send them to the loki ruler over another
       relation.
-
   ingress:
     interface: ingress
+    optional: true
     limit: 1
     description: |
       Ingress-per-app, to load-balance across multiple units of the coordinator.
-
   certificates:
     interface: tls-certificates
+    optional: true
     limit: 1
     description: |
       Certificate and key files for securing Loki communications with TLS.
-
   charm-tracing:
     interface: tracing
+    optional: true
     limit: 1
     description: |
       Enables sending charm traces to a distributed tracing backend such as Tempo.
-
   workload-tracing:
     interface: tracing
+    optional: true
     limit: 1
     description: |
       Enables sending workload traces to a distributed tracing backend such as Tempo.
-
-provides:
-  logging:
-    interface: loki_push_api
-    description: |
-      The coordinator can receive logs from other applications.
-
-  loki-cluster:
-    interface: loki_cluster
-    description: |
-      The coordinator sends the Loki configuration to the workers, obtaining
-      the roles they are configured to take on and their addressing information.
-
-  receive-remote-write:
-    interface: prometheus_remote_write
-
-  grafana-dashboards-provider:
-    interface: grafana_dashboard
-    description: |
-      Forward workers' built-in dashboards to grafana
-      (the coordinator, not the worker, owns all dashboards).
-
-  grafana-source:
-    interface: grafana_datasource
-
-  self-metrics-endpoint:
-    interface: prometheus_scrape
-    description: |
-      The coordinator provides scrape jobs for itself and for the workers.
-
-  send-datasource:
-    interface: grafana_datasource_exchange
-    description: |
-      Integration to share with other COS components this charm's datasources, and receive theirs.
 
 config:
   options:

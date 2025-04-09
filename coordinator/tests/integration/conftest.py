@@ -7,6 +7,8 @@ import logging
 import os
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
+from typing import Union
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -35,11 +37,11 @@ def timed_memoizer(func):
 
 @pytest.fixture(scope="module")
 @timed_memoizer
-async def loki_charm(ops_test: OpsTest) -> str:
+async def loki_charm(ops_test: OpsTest) -> Union[str, Path]:
     """Loki charm used for integration testing."""
     # Use the specified charm if set (used for testing the worker)
-    if charm := os.getenv("LOKI_CHARM"):
-        return charm
+    if charm_file := os.environ.get("CHARM_PATH"):
+        return Path(charm_file)
 
     charm = await ops_test.build_charm(".", verbosity="verbose")
     assert charm
