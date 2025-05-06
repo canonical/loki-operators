@@ -6,7 +6,6 @@ import json
 import scenario
 from cosl.interfaces.datasource_exchange import (
     DatasourceExchange,
-    DSExchangeAppData,
     GrafanaDatasource,
 )
 from scenario import Relation, State
@@ -30,19 +29,15 @@ def test_datasource_send(
 
     mimir_dsx = Relation(
         "send-datasource",
-        remote_app_data=dict(
-            DSExchangeAppData(
-                datasources=json.dumps(sorted(ds_mimir, key=lambda raw_ds: raw_ds["uid"]))
-            ).dump()
-        ),
+        remote_app_data= {
+            "datasources": json.dumps(sorted(ds_mimir, key=lambda raw_ds: raw_ds["uid"]))
+        }
     )
     tempo_dsx = Relation(
         "send-datasource",
-        remote_app_data=dict(
-            DSExchangeAppData(
-                datasources=json.dumps(sorted(ds_tempo, key=lambda raw_ds: raw_ds["uid"]))
-            ).dump()
-        ),
+        remote_app_data= {
+             "datasources": json.dumps(sorted(ds_tempo, key=lambda raw_ds: raw_ds["uid"]))
+        }
     )
 
     ds = Relation(

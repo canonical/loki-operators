@@ -6,10 +6,11 @@ requires-python = "~=3.10"
 
 dependencies = [
   "ops",
-  "cosl>=0.0.55",
+  "cosl>=0.1.0",
   "pydantic>2.0",
   "cryptography",
   "jsonschema",
+  # FIXME: remove crossplane once https://github.com/canonical/cos-lib/issues/144 is fixed 
   "crossplane",
   "opentelemetry-exporter-otlp-proto-http>=1.21.0"
 ]
