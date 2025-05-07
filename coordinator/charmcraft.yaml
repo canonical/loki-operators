@@ -38,15 +38,13 @@ parts:
         mode: "755"
   lokitool:
     plugin: dump
-    source: .
-    build-packages:
-      - curl
-      - unzip
-    override-pull: |
-      curl -fLo lokitool.zip https://github.com/grafana/loki/releases/download/v3.2.1/lokitool-linux-${CRAFT_TARGET_ARCH}.zip
-      unzip lokitool.zip && rm lokitool.zip
-      mv lokitool-linux-${CRAFT_TARGET_ARCH} lokitool
-      chmod 755 lokitool
+    source: https://github.com/grafana/loki/releases/download/v3.2.1/lokitool-linux-${CRAFT_ARCH_BUILD_FOR}.zip
+    source-type: zip
+    organize:
+      lokitool-linux-${CRAFT_ARCH_BUILD_FOR}: lokitool
+    permissions:
+      - path: lokitool
+        mode: "500"
 
 containers:
   nginx:
