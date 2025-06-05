@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
 import yaml
-from cosl.coordinated_workers.coordinator import ClusterRolesConfig, Coordinator
-from cosl.coordinated_workers.worker import CERT_FILE, KEY_FILE
+from coordinated_workers.coordinator import ClusterRolesConfig, Coordinator
+from coordinated_workers.worker import CERT_FILE, KEY_FILE
 
 logger = logging.getLogger(__name__)
 
