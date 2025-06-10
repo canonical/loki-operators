@@ -20,11 +20,12 @@ import coordinated_workers.nginx
 import ops
 import yaml
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
+from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 from charms.tempo_coordinator_k8s.v0.tracing import charm_tracing_config
-from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
+from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig
 from cosl.interfaces.datasource_exchange import DatasourceDict
@@ -94,7 +95,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             workers_config=LokiConfig(
                 alertmanager_urls=self.alertmanager_consumer.get_cluster_info()
             ).config,
+            worker_ports=lambda _: tuple({3100}),
+            resources_requests=self.get_resource_requests,
+            container_name="charm",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
+            catalogue_item=self._catalogue_item,
         )
 
         self.charm_tracing_endpoint, self.server_ca_cert = charm_tracing_config(
@@ -122,29 +127,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # do this regardless of what event we are processing
         self._reconcile()
 
-        ######################################
-        # === EVENT HANDLER REGISTRATION === #
-        ######################################
-        self.framework.observe(self.ingress.on.ready, self._on_ingress_ready)
-        self.framework.observe(self.ingress.on.revoked, self._on_ingress_revoked)
-
-    ##########################
-    # === EVENT HANDLERS === #
-    ##########################
-    def _on_ingress_ready(self, event: IngressPerAppReadyEvent):
-        """Log the obtained ingress address.
-
-        This event refreshes the PrometheusRemoteWriteProvider address.
-        """
-        logger.info("Ingress for app ready on '%s'", event.url)
-
-    def _on_ingress_revoked(self, _) -> None:
-        """Log the ingress address being revoked.
-
-        This event refreshes the PrometheusRemoteWriteProvider address.
-        """
-        logger.info("Ingress for app revoked")
-
     ######################
     # === PROPERTIES === #
     ######################
@@ -171,6 +153,20 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         except ModelError as e:
             logger.error("Failed obtaining external url: %s.", e)
         return self.internal_url
+
+    @property
+    def _catalogue_item(self) -> CatalogueItem:
+        """A catalogue application entry for this Mimir instance."""
+        return CatalogueItem(
+            name="Loki",
+            icon="text",
+            url="",
+            description=(
+                "Loki provides a horizontally scalable, highly available, "
+                "multi-tenant, log aggregation system. "
+                "(no user interface available)"
+            ),
+        )
 
     ###########################
     # === UTILITY METHODS === #
@@ -281,6 +277,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             for _, ds_uid in ds_uids.items():
                 raw_datasources.append({"type": "loki", "uid": ds_uid, "grafana_uid": grafana_uid})
         self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
+
+    def get_resource_requests(self, _) -> Dict[str, str]:
+        """Returns a dictionary for the "requests" portion of the resources requirements."""
+        return {"cpu": "50m", "memory": "100Mi"}
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed

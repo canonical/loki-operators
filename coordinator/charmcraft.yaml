@@ -144,6 +144,11 @@ requires:
     limit: 1
     description: |
       Enables sending workload traces to a distributed tracing backend such as Tempo.
+  catalogue:
+    interface: catalogue
+    optional: true
+    description: |
+      Integration to help users discover Loki's deployment.
 
 config:
   options:
