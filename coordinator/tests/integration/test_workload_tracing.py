@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
+async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str, cos_channel):
     """Build the charm-under-test and deploy it together with related charms."""
     assert ops_test.model
     # deploy charms of interest
@@ -44,7 +44,7 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
         ops_test.model.deploy(
             "loki-worker-k8s",
             APP_WORKER_NAME,
-            channel="latest/edge",
+            channel=cos_channel,
             config={"role-all": True},
             trust=True,
         ),
@@ -67,7 +67,7 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str):
     )
 
     # deploy Tempo cluster
-    await deploy_tempo_cluster(ops_test)
+    await deploy_tempo_cluster(ops_test, cos_channel)
 
     # wait until charms settle down
     await ops_test.model.wait_for_idle(

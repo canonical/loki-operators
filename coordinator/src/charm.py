@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = "/etc/loki-alerts/rules"
 ALERTS_HASH_PATH = "/etc/loki-alerts/alerts.sha256"
+NGINX_PORT = NginxHelper._nginx_port
+NGINX_TLS_PORT = NginxHelper._nginx_tls_port
 
 
 @trace_charm(
@@ -62,7 +64,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self._nginx_helper = NginxHelper(self._nginx_container)
         self.ingress = IngressPerAppRequirer(
             charm=self,
-            port=urlparse(self.internal_url).port,
             strip_prefix=True,
             scheme=lambda: urlparse(self.internal_url).scheme,
         )
@@ -106,6 +107,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             self.coordinator.charm_tracing, coordinated_workers.nginx.CA_CERT_PATH
         )
 
+        # needs to be after the Coordinator definition in order to push certificates before checking
+        # if they exist
+        if port := urlparse(self.internal_url).port:
+            self.ingress.provide_ingress_requirements(port=port)
+
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
@@ -119,7 +125,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.loki_provider = LokiPushApiProvider(
             self,
             address=external_url.hostname or self.hostname,
-            port=external_url.port or 443 if self.coordinator.tls_available else 8080,
+            port=external_url.port or NGINX_TLS_PORT
+            if self.coordinator.tls_available
+            else NGINX_PORT,
             scheme=external_url.scheme,
             path=f"{external_url.path}/loki/api/v1/push",
         )
@@ -139,10 +147,12 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     @property
     def internal_url(self) -> str:
         """Returns workload's FQDN. Used for ingress."""
-        scheme = "http"
-        if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk:
-            scheme = "https"
-        return f"{scheme}://{self.hostname}:8080"
+        scheme, port = (
+            ("https", NGINX_TLS_PORT)
+            if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk
+            else ("http", NGINX_PORT)
+        )
+        return f"{scheme}://{self.hostname}:{port}"
 
     @property
     def external_url(self) -> str:
