@@ -32,7 +32,7 @@ class NginxHelper:
 
     _locations_backend: List[NginxLocationConfig] = [
         NginxLocationConfig(path="/loki/api/v1/rules", backend="backend",modifier="="),
-        NginxLocationConfig(path="/prometheus", backend="backend",modifier="="),
+        NginxLocationConfig(path="/prometheus/.*", backend="backend",modifier="~"),
         NginxLocationConfig(path="/api/v1/rules", backend="backend", backend_url="/loki/api/v1/rules",modifier="="),
     ]
     _locations_read: List[NginxLocationConfig] = [

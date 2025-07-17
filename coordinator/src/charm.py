@@ -166,7 +166,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
-        """A catalogue application entry for this Mimir instance."""
+        """A catalogue application entry for this Loki instance."""
         return CatalogueItem(
             name="Loki",
             icon="text",
@@ -251,7 +251,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             self._nginx_container.remove_path(RULES_DIR, recursive=True)
             rules_file_paths: List[str] = self._push_alert_rules(loki_alerts)
             self._push(ALERTS_HASH_PATH, alerts_hash)
-            # Push the alert rules to the Mimir cluster (persisted in s3)
+            # Push the alert rules to the Loki cluster (persisted in s3)
             logger.info(
                 f"lokitool rules sync {' '.join(rules_file_paths)} --address={self.external_url}/loki --id=fake"
             )

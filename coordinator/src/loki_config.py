@@ -79,7 +79,7 @@ class LokiConfig:
         self._recovery_data_dir = recovery_data_dir
 
     def config(self, coordinator: Coordinator) -> str:
-        """Generate shared config file for mimir.
+        """Generate shared config file for loki.
 
         Reference: https://grafana.com/docs/loki/latest/configuration/
         """
