@@ -16,15 +16,12 @@ import socket
 from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urlparse
 
-import coordinated_workers.nginx
 import ops
 import yaml
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
-from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
-from charms.tempo_coordinator_k8s.v0.tracing import charm_tracing_config
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig
@@ -44,13 +41,7 @@ NGINX_PORT = NginxHelper._nginx_port
 NGINX_TLS_PORT = NginxHelper._nginx_tls_port
 
 
-@trace_charm(
-    tracing_endpoint="charm_tracing_endpoint",
-    server_cert="server_ca_cert",
-    extra_types=[
-        Coordinator,
-    ],
-)
+
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
 
@@ -101,10 +92,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             container_name="charm",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
-        )
-
-        self.charm_tracing_endpoint, self.server_ca_cert = charm_tracing_config(
-            self.coordinator.charm_tracing, coordinated_workers.nginx.CA_CERT_PATH
         )
 
         # needs to be after the Coordinator definition in order to push certificates before checking
