@@ -32,7 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest, loki_charm: str, cos_channel)
     """Build the charm-under-test and deploy it together with related charms."""
     assert ops_test.model is not None  # for pyright
     await asyncio.gather(
-        ops_test.model.deploy(loki_charm, "loki", resources=charm_resources(), trust=True),
+        ops_test.model.deploy(loki_charm, "loki", resources=charm_resources(), num_units=3, trust=True),
         ops_test.model.deploy("prometheus-k8s", "prometheus", channel=cos_channel, trust=True),
         ops_test.model.deploy("loki-k8s", "loki-mono", channel=cos_channel, trust=True),
         ops_test.model.deploy("grafana-k8s", "grafana", channel=cos_channel, trust=True),
@@ -134,7 +134,9 @@ async def test_grafana_source(ops_test: OpsTest):
     """Test the grafana-source integration, by checking that Loki appears in the Datasources."""
     assert ops_test.model is not None
     datasources = await get_grafana_datasources(ops_test)
-    assert "loki" in datasources[0]["name"]
+    loki_datasources = ["loki" in d["name"] for d in datasources]
+    assert any(loki_datasources)
+    assert len(loki_datasources) == 1
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
