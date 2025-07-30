@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest as pytest
 from coordinated_workers.coordinator import Coordinator
+from helpers import get_worker_config_analytics
+from scenario import State
 
 from src.loki_config import (
     LOKI_ROLES_CONFIG,
@@ -52,3 +54,34 @@ def test_recommended(mock_coordinator, roles, expected):
     mc._roles_config = LOKI_ROLES_CONFIG
 
     assert mc.is_recommended is expected
+
+@pytest.mark.parametrize(
+    "set_config",
+    [
+        True,
+        False
+    ]
+)
+def test_reporting_config(context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container, set_config):
+    """Ensure the coordinator sends the correct config for analytics and reporting to the worker."""
+    # GIVEN the config for reporting in Loki Coordinator is set to a boolean
+    config_value: str = set_config
+    config = {"reporting_enabled": config_value}
+
+    state_in = State(
+        relations=[
+            s3,
+            all_worker,
+        ],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+        config=config
+    )
+
+    # WHEN a worker enters a relation to a coordinator
+    with context(context.on.relation_joined(all_worker), state_in) as mgr:
+        state_out = mgr.run()
+
+        # THEN the worker should have the correct boolean value for reporting in analytics
+        config = get_worker_config_analytics(state_out.relations, "loki-cluster")
+        assert config == set_config

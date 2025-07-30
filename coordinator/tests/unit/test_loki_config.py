@@ -230,6 +230,16 @@ def test_build_server_config(loki_config: LokiConfig, coordinator):
     }
     assert server_config == expected_config
 
+@pytest.mark.parametrize(
+    "reporting_enabled",
+    [
+        True,
+        False
+    ],
+)
+def test_build_analytics_config(loki_config: LokiConfig, reporting_enabled):
+    analytics_config = loki_config._analytics_config(reporting_enabled)
+    assert analytics_config["reporting_enabled"] == reporting_enabled
 
 if __name__ == "__main__":
     unittest.main()

@@ -182,3 +182,9 @@ config:
         Specifying retention periods for individual streams is not currently supported.
       type: int
       default: 0
+    reporting_enabled:
+      description: |
+        Toggle anonymous reporting of usage info to Grafana.
+        Ref: https://grafana.com/docs/loki/latest/configure/#analytics
+      type: boolean
+      default: true
