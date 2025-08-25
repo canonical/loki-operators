@@ -89,7 +89,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             ).config,
             worker_ports=lambda _: tuple({3100}),
             resources_requests=self.get_resource_requests,
-            container_name="charm",  # container to which resource limits will be applied
+            container_name="nginx",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
         )
