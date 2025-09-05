@@ -41,7 +41,6 @@ NGINX_PORT = NginxHelper._nginx_port
 NGINX_TLS_PORT = NginxHelper._nginx_tls_port
 
 
-
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
 
@@ -124,6 +123,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             scheme=external_url.scheme,
             path=f"{external_url.path}/loki/api/v1/push",
         )
+        self.loki_provider.update_endpoint(url=self.external_url)
 
         # do this regardless of what event we are processing
         self._reconcile()
