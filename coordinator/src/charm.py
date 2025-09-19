@@ -74,7 +74,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "s3": "s3",
                 "send-datasource": "send-datasource",
                 "receive-datasource": None,
-                "catalogue": None,
+                "catalogue": "catalogue",
             },
             nginx_config=NginxConfig(
                 server_name=self.hostname,
@@ -159,6 +159,14 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
+        api_endpoints = {
+            "Instant query": "/loki/api/v1/query",
+            "Query range": "/loki/api/v1/query_range",
+            "Labels": "/loki/api/v1/labels",
+            "Label values": "/loki/api/v1/label/<name>/values",
+            "Alerts": "/prometheus/api/v1/alerts",
+            "Format query": "/loki/api/v1/format_query"
+        }
         """A catalogue application entry for this Loki instance."""
         return CatalogueItem(
             name="Loki",
@@ -169,6 +177,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "multi-tenant, log aggregation system. "
                 "(no user interface available)"
             ),
+            api_docs="https://grafana.com/docs/loki/latest/reference/loki-http-api/",
+            api_endpoints={key: f"{self.external_url}{path}" for key, path in api_endpoints.items()},
         )
 
     ###########################
