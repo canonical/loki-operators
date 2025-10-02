@@ -135,13 +135,26 @@ class LokiConfig:
         }
 
     def _compactor_config(self, retention_period: int) -> Dict[str, Any]:
+        """Compactor component config, which compacts index shards for performance.
+
         # Ref: https://grafana.com/docs/loki/latest/configure/#compactor
+
+        When retention is enabled, it is required to configure a store for deletion requests (ref: https://grafana.com/docs/loki/latest/operations/storage/retention/)
+        Delete requests are created and the compactor executes them.
+        It's necessary to persist them (e.g. in S3) across restarts for example.
+        This store is the same S3 storage that we define in the storages config
+        """
         retention_enabled = retention_period != 0
-        return {
+        config = {
             # Activate custom retention. Default is False.
             "retention_enabled": retention_enabled,
             "working_directory": COMPACTOR_DIR,
         }
+
+        if retention_enabled:
+            config["delete_request_store"] = "s3"
+
+        return config
 
     def _frontend_config(self) -> Dict[str, Any]:
         # Ref: https://grafana.com/docs/loki/latest/configure/#frontend

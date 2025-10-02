@@ -9,20 +9,21 @@ def get_relation_data(relations, endpoint, key):
     assert len(relevant) < 2, "This helper currently assumes only one relation."
     return relevant[0] if relevant else None
 
-def get_worker_config_analytics(relations, endpoint):
+def get_worker_config(relations, endpoint, block_key):
     relevant = [r.local_app_data for r in relations if r.endpoint == endpoint]
 
     assert relevant, "No matching relation found"
 
-    worker_config_str = relevant[0]['worker_config']
+    # The block_key references compactor, analytics, storage, etc. Meaning the key to a section of the config
+    worker_config_str = relevant[0]["worker_config"]
 
     worker_config = yaml.safe_load(worker_config_str)
     worker_config = yaml.safe_load(worker_config)
 
     # Assert the types of the parsed object
     assert isinstance(worker_config, dict)
-    assert 'analytics' in worker_config, "Missing 'analytics' in worker_config"
-    assert isinstance(worker_config['analytics'], dict)
+    assert block_key in worker_config, f"Missing {block_key} in worker_config"
+    assert isinstance(worker_config[block_key], dict)
+    assert block_key in worker_config
+    return worker_config[block_key]
 
-    # Return the 'reporting_enabled' key of the 'analytics' section of the worker config
-    return worker_config['analytics']['reporting_enabled']
