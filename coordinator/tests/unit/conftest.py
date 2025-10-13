@@ -44,6 +44,7 @@ def nginx_container():
         execs={
             Exec(["lokitool", "rules", "sync", address_arg, "--id=fake"], return_code=0),
             Exec(["lokitool", "rules", "sync", address_arg_tls, "--id=fake"], return_code=0),
+            Exec(["update-ca-certificates", "--fresh"], return_code=0),
         },
     )
 
@@ -53,6 +54,9 @@ def nginx_prometheus_exporter_container():
     return Container(
         "nginx-prometheus-exporter",
         can_connect=True,
+        execs={
+            Exec(["update-ca-certificates", "--fresh"], return_code=0),
+        },
     )
 
 

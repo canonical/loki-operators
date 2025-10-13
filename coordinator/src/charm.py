@@ -25,6 +25,7 @@ from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig
+from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from cosl.interfaces.datasource_exchange import DatasourceDict
 from ops.model import ModelError
 from ops.pebble import Error as PebbleError
@@ -97,19 +98,17 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # if they exist
         if port := urlparse(self.internal_url).port:
             self.ingress.provide_ingress_requirements(port=port)
-
+        self._telemetry_correlation = TelemetryCorrelation(
+            app_name=self.app.name,
+            grafana_source_relations=self.model.relations["grafana-source"],
+            datasource_exchange_relations=self.model.relations["send-datasource"]
+        )
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
             source_url=self.external_url,
-            extra_fields={"httpHeaderName1": "X-Scope-OrgID"},
+            extra_fields=self._build_grafana_source_extra_fields(),
             secure_extra_fields={"httpHeaderValue1": "anonymous"},
-            refresh_event=[
-                self.coordinator.cluster.on.changed,
-                self.on[self.coordinator._certificates.relationship_name].relation_changed,
-                self.ingress.on.ready,
-                self.ingress.on.revoked,
-            ],
             is_ingress_per_app=self.ingress.is_ready(),
         )
 
@@ -302,7 +301,39 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             self._set_alerts()
 
         self._update_datasource_exchange()
+        self.grafana_source.update_source(
+            source_url=self.external_url
+        )
 
+    def _build_grafana_source_extra_fields(self) -> Dict[str, Any]:
+        """Extra fields needed for the grafana-source relation, like data correlation config."""
+        logs_to_traces_config = self._build_logs_to_traces_config()
+
+        return {
+            "httpHeaderName1": "X-Scope-OrgID",
+            **logs_to_traces_config,
+        }
+
+
+    def _build_logs_to_traces_config(self) -> Dict[str, Any]:
+        # TODO: move this into the grafana_source library
+        # reference: https://grafana.com/docs/grafana/latest/datasources/loki/#configure-derived-fields
+        if datasource := self._telemetry_correlation.find_correlated_datasource(
+            datasource_type="tempo",
+            correlation_feature="logs-to-traces",
+        ):
+            return {
+                "derivedFields": [{
+                        "datasourceUid": datasource.uid,
+                        "matcherRegex": "(?:traceID|trace_id|tid)=(\\w+)",
+                        "name": "traceID",
+                        # url will be interpreted as query for the datasource
+                        "url": "$${__value.raw}",
+                        "urlDisplayLabel": "View trace",
+                    }
+                ]
+            }
+        return {}
 
 if __name__ == "__main__":  # pragma: nocover
     ops.main(LokiCoordinatorK8SOperatorCharm)
