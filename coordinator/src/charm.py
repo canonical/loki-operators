@@ -76,6 +76,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "send-datasource": "send-datasource",
                 "receive-datasource": None,
                 "catalogue": "catalogue",
+                "service-mesh": None,
+                "service-mesh-provide-cmr-mesh": None,
+                "service-mesh-require-cmr-mesh": None,
             },
             nginx_config=NginxConfig(
                 server_name=self.hostname,
@@ -92,6 +95,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             container_name="nginx",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
+            peer_relation="loki-peers",
         )
 
         # needs to be after the Coordinator definition in order to push certificates before checking
