@@ -6,6 +6,8 @@ import requests
 import yaml
 from juju.application import Application
 from juju.unit import Unit
+from lightkube import Client
+from lightkube.generic_resource import create_namespaced_resource
 from minio import Minio
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -73,46 +75,129 @@ async def get_unit_address(ops_test: OpsTest, app_name: str, unit_no: int) -> st
     return unit["address"]
 
 
-async def get_grafana_datasources(ops_test: OpsTest, grafana_app: str = "grafana") -> List[Any]:
-    """Get the Datasources from Grafana using the HTTP API.
-
-    HTTP API Response format: [{"id": 1, "name": <some-name>, ...}, ...]
-    """
+async def get_grafana_datasources_from_client_localhost(
+    ops_test: OpsTest,
+    grafana_app: str = "grafana",
+) -> List[Any]:
+    """Get Grafana datasources from the test host machine (outside the cluster)."""
     assert ops_test.model is not None
     grafana_leader: Unit = ops_test.model.applications[grafana_app].units[0]  # type: ignore
     action = await grafana_leader.run_action("get-admin-password")
     action_result = await action.wait()
     admin_password = action_result.results["admin-password"]
     grafana_url = await get_unit_address(ops_test, grafana_app, 0)
-    response = requests.get(f"http://admin:{admin_password}@{grafana_url}:3000/api/datasources")
-    assert response.status_code == 200
+    url = f"http://admin:{admin_password}@{grafana_url}:3000/api/datasources"
 
+    # Run query from host
+    response = requests.get(url)
+    assert response.status_code == 200
     return response.json()
 
 
-async def get_prometheus_targets(
-    ops_test: OpsTest, prometheus_app: str = "prometheus"
-) -> Dict[str, Any]:
-    """Get the Scrape Targets from Prometheus using the HTTP API.
+async def get_grafana_datasources_from_client_pod(
+    ops_test: OpsTest,
+    source_pod: str,
+    grafana_app: str = "grafana",
+) -> List[Any]:
+    """Get Grafana datasources from inside a pod (within the cluster)."""
+    assert ops_test.model is not None
+    grafana_leader: Unit = ops_test.model.applications[grafana_app].units[0]  # type: ignore
+    action = await grafana_leader.run_action("get-admin-password")
+    action_result = await action.wait()
+    admin_password = action_result.results["admin-password"]
+    grafana_url = await get_unit_address(ops_test, grafana_app, 0)
+    url = f"http://admin:{admin_password}@{grafana_url}:3000/api/datasources"
 
-    HTTP API Response format:
-        {"status": "success", "data": {"activeTargets": [{"discoveredLabels": {..., "juju_charm": <charm>, ...}}]}}
-    """
+    # Run query from within a pod using juju exec (needed for service mesh)
+    action = await ops_test.model.applications[source_pod.split("/")[0]].units[
+        int(source_pod.split("/")[1])
+    ].run(f"curl -s {url}")
+    result = await action.wait()
+
+    response_text = result.results.get("stdout", result.results.get("Stdout", ""))
+    return json.loads(response_text)
+
+
+async def get_prometheus_targets_from_client_localhost(
+    ops_test: OpsTest,
+    prometheus_app: str = "prometheus",
+) -> Dict[str, Any]:
+    """Get Prometheus scrape targets from the test host machine (outside the cluster)."""
     assert ops_test.model is not None
     prometheus_url = await get_unit_address(ops_test, prometheus_app, 0)
-    response = requests.get(f"http://{prometheus_url}:9090/api/v1/targets")
+    url = f"http://{prometheus_url}:9090/api/v1/targets"
+
+    # Run query from host
+    response = requests.get(url)
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    response_json = response.json()
 
-    return response.json()["data"]
+    assert response_json["status"] == "success"
+    return response_json["data"]
 
 
-async def query_loki_series(ops_test: OpsTest, coordinator_app: str = "loki") -> Dict[str, Any]:
+async def get_prometheus_targets_from_client_pod(
+    ops_test: OpsTest,
+    source_pod: str,
+    prometheus_app: str = "prometheus",
+) -> Dict[str, Any]:
+    """Get Prometheus scrape targets from inside a pod (within the cluster)."""
+    assert ops_test.model is not None
+    prometheus_url = await get_unit_address(ops_test, prometheus_app, 0)
+    url = f"http://{prometheus_url}:9090/api/v1/targets"
+
+    # Run query from within a pod using juju exec (needed for service mesh)
+    action = await ops_test.model.applications[source_pod.split("/")[0]].units[
+        int(source_pod.split("/")[1])
+    ].run(f"curl -s {url}")
+    result = await action.wait()
+
+    response_text = result.results.get("stdout", result.results.get("Stdout", ""))
+    response_json = json.loads(response_text)
+
+    assert response_json["status"] == "success"
+    return response_json["data"]
+
+
+async def query_loki_series_from_client_localhost(
+    ops_test: OpsTest,
+    coordinator_app: str = "loki",
+) -> Dict[str, Any]:
+    """Query Loki series API from the test host machine (outside the cluster)."""
+    assert ops_test.model is not None
+
+    # Run query from host
     loki_url = await get_unit_address(ops_test, coordinator_app, 0)
     response = requests.get(f"http://{loki_url}:8080/loki/api/v1/series")
     assert response.status_code == 200
-    assert response.json()["status"] == "success"  # the query was successful
-    return response.json()
+    response_json = response.json()
+
+    assert response_json["status"] == "success"
+    return response_json
+
+
+async def query_loki_series_from_client_pod(
+    ops_test: OpsTest,
+    source_pod: str,
+    coordinator_app: str = "loki",
+) -> Dict[str, Any]:
+    """Query Loki series API from inside a pod (within the cluster)."""
+    assert ops_test.model is not None
+
+    # Run query from within a pod using juju exec (needed for service mesh)
+    loki_url = f"{coordinator_app}.{ops_test.model.name}.svc.cluster.local"
+    url = f"http://{loki_url}:8080/loki/api/v1/series"
+
+    action = await ops_test.model.applications[source_pod.split("/")[0]].units[
+        int(source_pod.split("/")[1])
+    ].run(f"curl -s {url}")
+    result = await action.wait()
+
+    response_text = result.results.get("stdout", result.results.get("Stdout", ""))
+    response_json = json.loads(response_text)
+
+    assert response_json["status"] == "success"
+    return response_json
 
 
 async def get_traefik_proxied_endpoints(
@@ -193,3 +278,58 @@ async def get_application_ip(ops_test: OpsTest, app_name: str) -> str:
     status = await ops_test.model.get_status()
     app = status["applications"][app_name]
     return app.public_address
+
+
+# TODO: this is a workaround. the ingress provider should provide the proxied-endpoints. See https://github.com/canonical/istio-ingress-k8s-operator/issues/108.
+# Update this after the above issue is fixed.
+def get_istio_ingress_ip(ops_test: OpsTest, app_name: str = "istio-ingress"):
+    """Get the istio-ingress public IP address from Kubernetes."""
+    gateway_resource = create_namespaced_resource(
+        group="gateway.networking.k8s.io",
+        version="v1",
+        kind="Gateway",
+        plural="gateways",
+    )
+    client = Client()
+    gateway = client.get(gateway_resource, app_name, namespace=ops_test.model.name)  # type: ignore
+    if gateway.status and gateway.status.get("addresses"):  # type: ignore
+        return gateway.status["addresses"][0]["value"]  # type: ignore
+    raise ValueError(f"No ingress address found for {app_name}")
+
+
+async def service_mesh(
+    enable: bool,
+    ops_test: OpsTest,
+    beacon_app_name: str,
+    apps_to_be_related_with_beacon: List[str],
+):
+    """Enable or disable the service-mesh in the model.
+
+    This puts the entire model, that the beacon app is part of, on mesh.
+    This integrates the apps_to_be_related_with_beacon with the beacon app via the `service-mesh` relation.
+    """
+    assert ops_test.model is not None
+    await ops_test.model.applications[beacon_app_name].set_config(
+        {"model-on-mesh": str(enable).lower()}
+    )
+    # Wait for all active state before further actions.
+    # The wait is necessary to make sure all the charms have recovered from the network changes.
+    await ops_test.model.wait_for_idle(
+        status="active",
+        timeout=1000,
+        raise_on_error=False,
+    )
+    if enable:
+        for app in apps_to_be_related_with_beacon:
+            await ops_test.model.integrate(f"{beacon_app_name}:service-mesh", f"{app}:service-mesh")
+    else:
+        for app in apps_to_be_related_with_beacon:
+            await ops_test.model.applications[beacon_app_name].remove_relation(
+                f"{beacon_app_name}:service-mesh", f"{app}:service-mesh"
+            )
+    await ops_test.model.wait_for_idle(
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )

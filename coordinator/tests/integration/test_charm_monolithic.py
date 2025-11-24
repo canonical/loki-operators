@@ -15,10 +15,10 @@ from helpers import (
     charm_resources,
     configure_minio,
     configure_s3_integrator,
-    get_grafana_datasources,
-    get_prometheus_targets,
+    get_grafana_datasources_from_client_localhost,
+    get_prometheus_targets_from_client_localhost,
     get_traefik_proxied_endpoints,
-    query_loki_series,
+    query_loki_series_from_client_localhost,
 )
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -109,7 +109,7 @@ async def test_integrate(ops_test: OpsTest):
 async def test_grafana_source(ops_test: OpsTest):
     """Test the grafana-source integration, by checking that Loki appears in the Datasources."""
     assert ops_test.model is not None
-    datasources = await get_grafana_datasources(ops_test)
+    datasources = await get_grafana_datasources_from_client_localhost(ops_test)
     assert "loki" in datasources[0]["name"]
 
 
@@ -117,7 +117,7 @@ async def test_grafana_source(ops_test: OpsTest):
 async def test_metrics_endpoint(ops_test: OpsTest):
     """Check that Loki appears in the Prometheus Scrape Targets."""
     assert ops_test.model is not None
-    targets = await get_prometheus_targets(ops_test)
+    targets = await get_prometheus_targets_from_client_localhost(ops_test)
     loki_targets = [
         target
         for target in targets["activeTargets"]
@@ -129,7 +129,7 @@ async def test_metrics_endpoint(ops_test: OpsTest):
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
 async def test_logs_in_loki(ops_test: OpsTest):
     """Check that the flog logs appear in Loki."""
-    result = await query_loki_series(ops_test)
+    result = await query_loki_series_from_client_localhost(ops_test)
     assert result
     assert result["data"][0]["juju_charm"] == "flog-k8s"
 

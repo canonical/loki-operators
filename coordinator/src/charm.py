@@ -13,7 +13,7 @@ https://discourse.charmhub.io/t/4208
 import hashlib
 import logging
 import socket
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 import ops
@@ -21,11 +21,16 @@ import yaml
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
+from charms.istio_beacon_k8s.v0.service_mesh import (
+    AppPolicy,
+    UnitPolicy,
+)
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.nginx import NginxConfig
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
+from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
 from cosl.interfaces.datasource_exchange import DatasourceDict
 from ops.model import ModelError
 from ops.pebble import Error as PebbleError
@@ -76,9 +81,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 "send-datasource": "send-datasource",
                 "receive-datasource": None,
                 "catalogue": "catalogue",
-                "service-mesh": None,
-                "service-mesh-provide-cmr-mesh": None,
-                "service-mesh-require-cmr-mesh": None,
+                "service-mesh": "service-mesh",
+                "service-mesh-provide-cmr-mesh": "provide-cmr-mesh",
+                "service-mesh-require-cmr-mesh": "require-cmr-mesh",
             },
             nginx_config=NginxConfig(
                 server_name=self.hostname,
@@ -95,6 +100,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             container_name="nginx",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
+            worker_telemetry_proxy_config=self._worker_telemetry_proxy_config,
+            charm_mesh_policies=self._charm_mesh_policies,
             peer_relation="loki-peers",
         )
 
@@ -182,6 +189,33 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             ),
             api_docs="https://grafana.com/docs/loki/latest/reference/loki-http-api/",
             api_endpoints={key: f"{self.external_url}{path}" for key, path in api_endpoints.items()},
+        )
+
+    @property
+    def _charm_mesh_policies(self) -> List[Union[AppPolicy, UnitPolicy]]:
+        """Return the mesh policies specific to Loki."""
+        return [
+            # Allow access to loki logging API ports for charms related over the logging relation.
+            # This is a unit policy as loki's unit address is published for receving logs. Incase of ingress url, this is handled by the service_mesh ingress.
+            UnitPolicy(
+                relation="logging",
+                ports=[NGINX_PORT, NGINX_TLS_PORT],
+            ),
+            # Allow access to loki logging API ports for charms related over the grafana_source relation.
+            # This is a unit policy as loki's unit address is published. Incase of ingress url, this is handled by the service_mesh ingress.
+            UnitPolicy(
+                relation="grafana-source",
+                ports=[NGINX_PORT, NGINX_TLS_PORT],
+            )
+
+        ]
+
+    @property
+    def _worker_telemetry_proxy_config(self) -> WorkerTelemetryProxyConfig:
+        """Get the http and https ports for proxying worker telemetry."""
+        return WorkerTelemetryProxyConfig(
+            http_port=NGINX_PORT,
+            https_port=NGINX_TLS_PORT,
         )
 
     ###########################
@@ -308,6 +342,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.grafana_source.update_source(
             source_url=self.external_url
         )
+
+        # Open necessary service ports
+        nginx_port = NGINX_TLS_PORT if self.coordinator.tls_available else NGINX_PORT
+        self.unit.set_ports(nginx_port)
 
     def _build_grafana_source_extra_fields(self) -> Dict[str, Any]:
         """Extra fields needed for the grafana-source relation, like data correlation config."""
