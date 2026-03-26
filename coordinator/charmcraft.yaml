@@ -1,0 +1,220 @@
+# This file configures Charmcraft.
+# See https://juju.is/docs/sdk/charmcraft-config for guidance.
+
+name: loki-coordinator-k8s
+type: charm
+summary: Loki coordinator
+description: |
+    Loki coordinator.
+
+links:
+  documentation: https://discourse.charmhub.io/t/loki-coordinator-k8s-operator-docs-index/15491
+  website: https://charmhub.io/loki-coordinator-k8s
+  source: https://github.com/canonical/loki-coordinator-k8s-operator
+  issues: https://github.com/canonical/loki-coordinator-k8s-operator/issues
+
+assumes:
+  - k8s-api
+  - juju >= 3.6
+
+platforms:
+  ubuntu@24.04:amd64:
+
+parts:
+  charm:
+    source: .
+    plugin: uv
+    build-packages: [git]
+    build-snaps: [astral-uv]
+    override-build: |
+      craftctl default
+      git describe --always > $CRAFT_PART_INSTALL/version
+  cos-tool:
+    plugin: dump
+    source: https://github.com/canonical/cos-tool/releases/latest/download/cos-tool-${CRAFT_ARCH_BUILD_FOR}
+    source-type: file
+    permissions:
+      - path: cos-tool-${CRAFT_ARCH_BUILD_FOR}
+        mode: "755"
+  lokitool:
+    plugin: dump
+    source: https://github.com/grafana/loki/releases/download/v3.2.1/lokitool-linux-${CRAFT_ARCH_BUILD_FOR}.zip
+    source-type: zip
+    organize:
+      lokitool-linux-${CRAFT_ARCH_BUILD_FOR}: lokitool
+    permissions:
+      - path: lokitool
+        mode: "500"
+
+containers:
+  nginx:
+    resource: nginx-image
+  nginx-prometheus-exporter:
+    resource: nginx-prometheus-exporter-image
+
+resources:
+  nginx-image:
+    type: oci-image
+    description: OCI image for nginx
+    upstream-source: ghcr.io/canonical/nginx@sha256:6415a2c5f25f1d313c87315a681bdc84be80f3c79c304c6744737f9b34207993  # 1.27.5 rock 
+  nginx-prometheus-exporter-image:
+    type: oci-image
+    description: OCI image for nginx-prometheus-exporter
+    upstream-source: nginx/nginx-prometheus-exporter@sha256:d710e0ff2505a7037dd21e47eae07025010c0de08a6247d1a704824823becfd0  # renovate: oci-image tag: 1.1.0
+
+peers:
+  loki-peers:
+    interface: loki_peers
+
+provides:
+  logging:
+    interface: loki_push_api
+    optional: true
+    description: |
+      The coordinator can receive logs from other applications.
+  loki-cluster:
+    interface: loki_cluster
+    optional: true
+    description: |
+      The coordinator sends the Loki configuration to the workers, obtaining
+      the roles they are configured to take on and their addressing information.
+  receive-remote-write:
+    interface: prometheus_remote_write
+    optional: true
+    description: |
+      Integration to receive metrics from other charms to a 
+      Prometheus-remote-write-compatible endpoint.
+  grafana-dashboards-provider:
+    interface: grafana_dashboard
+    optional: true
+    description: |
+      Forward workers' built-in dashboards to grafana
+      (the coordinator, not the worker, owns all dashboards).
+  grafana-source:
+    interface: grafana_datasource
+    optional: true
+  self-metrics-endpoint:
+    interface: prometheus_scrape
+    optional: true
+    description: |
+      The coordinator provides scrape jobs for itself and for the workers.
+  send-datasource:
+    interface: grafana_datasource_exchange
+    optional: true
+    description: |
+      Integration to share with other COS components this charm's datasources, and receive theirs.
+  provide-cmr-mesh:
+    optional: true
+    interface: cross_model_mesh
+    description: |
+      Allow cross-model applications to make HTTP requests to loki via the service mesh.
+      This relation provides additional data required by the service mesh to create cross-model authorization policies
+
+      Announce a subset of juju topology to the other side because a CMR obfuscates identity.
+      Each pair of charm would need a separate relation of this kind, e.g. otelcol to loki and to prom.
+
+      To make use of this relation, you also must have either the service-mesh relation in place (e.g. istio-beacon) or
+      have the istio-beacon enroll the entire model (via its config option).
+      The service_mesh charm library manages both of these relations.
+
+requires:
+  alertmanager:
+    interface: alertmanager_dispatch
+    optional: true
+    description: |
+      Integrates with an Alertmanager to send notifications when alert rules are triggered.
+  s3:
+    interface: s3
+    optional: true
+    limit: 1
+    description: |
+      The coordinator obtains and shares storage details with workers, enabling Loki's access to an S3 bucket for data storage.
+  logging-consumer:
+    interface: loki_push_api
+    optional: true
+    description: |
+      Forward workers' built-in logging rules to the external Loki
+      (the coordinator, not the worker, owns all rule files).
+      Obtain rules and Loki's API endpoint to later send them to the loki ruler over another
+      relation.
+  ingress:
+    interface: ingress
+    optional: true
+    limit: 1
+    description: |
+      Ingress-per-app, to load-balance across multiple units of the coordinator.
+  certificates:
+    interface: tls-certificates
+    optional: true
+    limit: 1
+    description: |
+      Certificate and key files for securing Loki communications with TLS.
+  charm-tracing:
+    interface: tracing
+    optional: true
+    limit: 1
+    description: |
+      Enables sending charm traces to a distributed tracing backend such as Tempo.
+  workload-tracing:
+    interface: tracing
+    optional: true
+    limit: 1
+    description: |
+      Enables sending workload traces to a distributed tracing backend such as Tempo.
+  catalogue:
+    interface: catalogue
+    optional: true
+    description: |
+      Integration to help users discover Loki's deployment.
+  service-mesh:
+    limit: 1
+    interface: service_mesh
+    description: |
+      Subscribe this charm into a service mesh and create authorization policies.
+      We forward to the beacon our authorization policies.
+      The beacon sends the pod and service labels required by this charm to join the mesh.
+      This relation is a pre-requisite for using the provide-cmr-mesh relation.
+  require-cmr-mesh:
+    interface: cross_model_mesh
+    description: |
+      Allow a cross-model application access to loki via the service mesh.
+      This relation provides additional data required by the service mesh to enforce cross-model authorization policies.
+
+config:
+  options:
+    ingestion-rate-mb:
+      description: |
+        Per-user ingestion rate limit (MB/s).
+        This config option matches exactly Loki's `ingestion_rate_mb`, except that it is an integer here
+        (Loki takes a float).
+        This same value is used internally for setting `per_stream_rate_limit`. Loki uses a default of 3 for
+        `ingestion_rate_mb`, but 4 for `per_stream_rate_limit`. For this reason we use 4 as the default here.
+
+        Ref: https://grafana.com/docs/loki/latest/configure/#limits_config
+      type: int
+      default: 4
+    ingestion-burst-size-mb:
+      description: |
+        This config option matches exactly Loki's `ingestion_burst_size_mb`, except that it is an integer here
+        (Loki takes a float).
+        This same value is used internally for setting `per_stream_rate_limit_burst`. Loki uses a default of 6 for
+        `ingestion_burst_size_mb`, but 15 for `per_stream_rate_limit_burst`. For this reason we use 15 as the default
+        here.
+
+        Ref: https://grafana.com/docs/loki/latest/configure/#limits_config
+      type: int
+      default: 15
+    retention-period:
+      description: |
+        Sets a global retention period for log streams in Loki. A value of 0 disables retention (default).
+        Minimum retention period is 1d.
+        Specify the period in days. For example, to set a 48-day retention period, use `48`.
+        Specifying retention periods for individual streams is not currently supported.
+      type: int
+      default: 0
+    reporting_enabled:
+      description: |
+        Toggle anonymous reporting of usage info to Grafana.
+        Ref: https://grafana.com/docs/loki/latest/configure/#analytics
+      type: boolean
+      default: true
