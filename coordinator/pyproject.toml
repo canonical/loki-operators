@@ -1,0 +1,87 @@
+# Testing tools configuration
+[project]
+name = "loki-coordinator-k8s"
+version = "0.0"
+requires-python = "~=3.10"
+
+dependencies = [
+  "coordinated-workers",
+  "charmed-service-mesh-helpers>=0.2.0",
+  "lightkube-extensions",
+]
+
+[project.optional-dependencies]
+dev = [
+  # Linting
+  "ruff",
+  "codespell",
+  # Static
+  "pyright",
+  # Unit
+  "pytest",
+  "coverage[toml]",
+  "ops[testing]",
+  "deepdiff",
+  # Interface
+  "pytest-interface-tester>2.0.0",
+  # Integration
+  "juju",
+  "pytest-operator",
+  "minio",
+  "tenacity",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = [
+  "setup: tests setting up the juju model (select with '-m \"setup \"')"
+]
+
+addopts = "--tb=native --verbose --capture=no --log-cli-level=INFO"
+
+# Linting tools configuration
+[tool.ruff]
+line-length = 99
+extend-exclude = ["__pycache__", "*.egg_info"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+extend-ignore = [
+  "D203",
+  "D204",
+  "D213",
+  "D215",
+  "D400",
+  "D404",
+  "D406",
+  "D407",
+  "D408",
+  "D409",
+  "D413",
+]
+ignore = ["E501", "D107"]
+per-file-ignores = {"tests/*" = ["D100","D101","D102","D103","D104"]}
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pep8-naming]
+# Allow Pydantic's `@validator` decorator to trigger class method treatment.
+classmethod-decorators = ["classmethod", "pydantic.validator"]
+
+[tool.pyright]
+extraPaths = ["src", "lib"]
+pythonVersion = "3.8"
+pythonPlatform = "Linux"
+
+[tool.codespell]
+skip = ".git,.tox,build,venv*,tls_certificates.py"
+ignore-words-list = "assertIn,aNULL"
