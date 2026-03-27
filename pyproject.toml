@@ -1,0 +1,23 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+[project]
+name = "loki-operators"
+version = "0.1"
+requires-python = ">=3.12"
+
+
+[project.optional-dependencies]
+dev = [
+    #INTEGRATION TESTS
+    "jubilant",
+    "pytest-jubilant~=1.0",
+    "minio",
+    "requests",
+    "tenacity",
+]
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = ["setup", "teardown"]
