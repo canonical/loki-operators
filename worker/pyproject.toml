@@ -25,6 +25,7 @@ dev = [
   # Integration
   "jubilant",
   "pytest-jubilant~=1.0",
+  "requests",
 ]
 
 # Testing tools configuration
