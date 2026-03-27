@@ -23,16 +23,20 @@ dev = [
   "coverage[toml]",
   "ops[testing]",
   # Integration
-  "juju",
-  "pytest-operator",
+  "jubilant",
+  "pytest-jubilant~=1.0",
+  "requests",
 ]
 
 # Testing tools configuration
 [tool.coverage.run]
 branch = true
+source = ["src"]
+omit = ["tests/**", "lib/**"]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 0
 
 [tool.pytest.ini_options]
 minversion = "6.0"
