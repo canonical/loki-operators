@@ -25,10 +25,11 @@ dev = [
   # Interface
   "pytest-interface-tester>2.0.0",
   # Integration
-  "juju",
-  "pytest-operator",
+  "jubilant",
+  "pytest-jubilant~=1.0",
   "minio",
   "tenacity",
+  "requests",
 ]
 
 [tool.coverage.run]
@@ -36,6 +37,7 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 30
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
