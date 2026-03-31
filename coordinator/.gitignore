@@ -48,3 +48,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+*.egg-info/
+src/loki_alert_rules/consolidated_rules/

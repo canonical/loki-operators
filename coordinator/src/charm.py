@@ -133,6 +133,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             scheme=external_url.scheme,
             path=f"{external_url.path}/loki/api/v1/push",
         )
+        self.framework.observe(self.on.logging_relation_changed, self._on_logging_relation_changed)
         self.loki_provider.update_endpoint(url=self.external_url)
 
         # do this regardless of what event we are processing
@@ -331,6 +332,15 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def get_resource_requests(self, _) -> Dict[str, str]:
         """Returns a dictionary for the "requests" portion of the resources requirements."""
         return {"cpu": "50m", "memory": "100Mi"}
+
+    def _on_logging_relation_changed(self, event: ops.RelationChangedEvent):
+        """Update the Loki push API endpoint whenever a logging relation changes.
+
+        This ensures that the correct endpoint (including the external/ingress URL)
+        is always published in the relation data, even when the logging relation is
+        established before ingress is available or when Loki scales down and back up.
+        """
+        self.loki_provider.update_endpoint(url=self.external_url, relation=event.relation)
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
