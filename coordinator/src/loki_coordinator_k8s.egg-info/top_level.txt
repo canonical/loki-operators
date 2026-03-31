@@ -1,6 +1,0 @@
-charm
-grafana_dashboards
-loki_alert_rules
-loki_config
-nginx_config
-prometheus_alert_rules
