@@ -6,6 +6,13 @@ This is a Terraform module facilitating the deployment of Loki solution, using t
 > `s3-integrator` itself doesn't act as an S3 object storage system. For the HA solution to be functional, `s3-integrator` needs to point to an S3-like storage. See [this guide](https://discourse.charmhub.io/t/cos-lite-docs-set-up-minio/15211) to learn how to connect to an S3-like storage for traces.
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5 |
+| <a name="requirement_juju"></a> [juju](#requirement\_juju) | ~> 1.0 |
+
 ## Providers
 
 | Name | Version |
@@ -16,10 +23,10 @@ This is a Terraform module facilitating the deployment of Loki solution, using t
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_loki_backend"></a> [loki\_backend](#module\_loki\_backend) | git::https://github.com/canonical/loki-worker-k8s-operator//terraform | track/2 |
-| <a name="module_loki_coordinator"></a> [loki\_coordinator](#module\_loki\_coordinator) | git::https://github.com/canonical/loki-coordinator-k8s-operator//terraform | track/2 |
-| <a name="module_loki_read"></a> [loki\_read](#module\_loki\_read) | git::https://github.com/canonical/loki-worker-k8s-operator//terraform | track/2 |
-| <a name="module_loki_write"></a> [loki\_write](#module\_loki\_write) | git::https://github.com/canonical/loki-worker-k8s-operator//terraform | track/2 |
+| <a name="module_loki_backend"></a> [loki\_backend](#module\_loki\_backend) | git::https://github.com/canonical/loki-operators//worker/terraform | track/2 |
+| <a name="module_loki_coordinator"></a> [loki\_coordinator](#module\_loki\_coordinator) | git::https://github.com/canonical/loki-operators//coordinator/terraform | track/2 |
+| <a name="module_loki_read"></a> [loki\_read](#module\_loki\_read) | git::https://github.com/canonical/loki-operators//worker/terraform | track/2 |
+| <a name="module_loki_write"></a> [loki\_write](#module\_loki\_write) | git::https://github.com/canonical/loki-operators//worker/terraform | track/2 |
 
 ## Inputs
 
