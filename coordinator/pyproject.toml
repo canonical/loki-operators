@@ -30,6 +30,7 @@ dev = [
   "minio",
   "tenacity",
   "requests",
+  "sh",
 ]
 
 [tool.coverage.run]

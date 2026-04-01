@@ -26,6 +26,7 @@ dev = [
   "jubilant",
   "pytest-jubilant~=1.0",
   "requests",
+  "sh",
 ]
 
 # Testing tools configuration
