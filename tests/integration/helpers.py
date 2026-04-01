@@ -67,6 +67,38 @@ def get_grafana_datasources_from_client_localhost(
     return response.json()
 
 
+def get_loki_rules_from_grafana(
+    juju: Juju,
+    grafana_app: str = "grafana",
+) -> Dict[str, Any]:
+    """Query Loki alert rules through Grafana's Prometheus-compatible API.
+
+    This exercises the nginx routing in the Loki coordinator for the
+    /prometheus/api/v1/rules endpoint, which Grafana uses to fetch alert rules.
+    """
+    result = juju.run(f"{grafana_app}/leader", "get-admin-password")
+    admin_password = result.results["admin-password"]
+    grafana_url = get_unit_address(juju, grafana_app, 0)
+    base_url = f"http://admin:{admin_password}@{grafana_url}:3000"
+
+    # Find the Loki datasource UID
+    response = requests.get(f"{base_url}/api/datasources")
+    assert response.status_code == 200
+    datasources = response.json()
+
+    loki_uid = None
+    for ds in datasources:
+        if "loki" in ds.get("name", "").lower() or ds.get("type") == "loki":
+            loki_uid = ds.get("uid")
+            break
+    assert loki_uid is not None, "Loki datasource not found in Grafana"
+
+    # Query alert rules through Grafana's Prometheus-compatible proxy endpoint
+    response = requests.get(f"{base_url}/api/prometheus/{loki_uid}/api/v1/rules")
+    assert response.status_code == 200
+    return response.json()
+
+
 def get_grafana_datasources_from_client_pod(
     juju: Juju,
     source_pod: str,
