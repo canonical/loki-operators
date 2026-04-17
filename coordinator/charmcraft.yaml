@@ -18,8 +18,7 @@ description: |
 
   Key features:
 
-  - Centralized management of all external integrations, including log ingestion via the Loki
-    Push API, Alertmanager, Grafana, and Prometheus.
+  - Centralized management of all external integrations, including log ingestion via `loki_push_api`, visualization and data source integration with Grafana, and alerting through Alertmanager.```
   - Automatic configuration distribution to Loki Worker units via the loki-cluster relation.
   - Built-in nginx reverse proxy for load balancing and traffic routing across workers.
   - S3-compatible object storage integration for scalable log data persistence.
