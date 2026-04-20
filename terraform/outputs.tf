@@ -21,6 +21,7 @@ output "provides" {
     self_metrics_endpoint       = "self-metrics-endpoint",
     send_datasource             = "send-datasource",
   }
+  description = "All Juju integration endpoints where the charm is the provider"
 }
 
 output "requires" {
@@ -32,4 +33,5 @@ output "requires" {
     s3               = "s3",
     charm_tracing    = "charm-tracing",
   }
+  description = "All Juju integration endpoints where the charm is the requirer"
 }
