@@ -10,6 +10,6 @@ output "provides" {
 }
 
 output "requires" {
-  value = {}
+  value       = {}
   description = "All Juju integration endpoints where the charm is the requirer"
 }

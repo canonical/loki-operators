@@ -3,7 +3,7 @@ output "app_name" {
 }
 
 output "provides" {
-  value = {}
+  value       = {}
   description = "All Juju integration endpoints where the charm is the provider"
 }
 
