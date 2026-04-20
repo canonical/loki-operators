@@ -2,10 +2,12 @@ output "app_name" {
   value = juju_application.loki_coordinator.name
 }
 
-output "endpoints" {
+output "provides" {
   value = {
-    # Requires
-    # Provides
     loki_cluster = "loki-cluster"
   }
+}
+
+output "requires" {
+  value = {}
 }
