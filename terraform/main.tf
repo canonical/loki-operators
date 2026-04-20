@@ -116,12 +116,12 @@ resource "juju_integration" "coordinator_to_backend" {
 
   application {
     name     = module.loki_coordinator.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_coordinator.provides.loki_cluster
   }
 
   application {
     name     = module.loki_backend.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_backend.requires.loki_cluster
   }
 }
 
@@ -130,12 +130,12 @@ resource "juju_integration" "coordinator_to_read" {
 
   application {
     name     = module.loki_coordinator.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_coordinator.provides.loki_cluster
   }
 
   application {
     name     = module.loki_read.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_read.requires.loki_cluster
   }
 }
 
@@ -144,11 +144,11 @@ resource "juju_integration" "coordinator_to_write" {
 
   application {
     name     = module.loki_coordinator.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_coordinator.provides.loki_cluster
   }
 
   application {
     name     = module.loki_write.app_name
-    endpoint = "loki-cluster"
+    endpoint = module.loki_write.requires.loki_cluster
   }
 }

@@ -11,23 +11,27 @@ output "app_names" {
   description = "All application names which make up this product module"
 }
 
-output "endpoints" {
+output "provides" {
   value = {
-    # Requires
+    grafana_dashboards_provider = "grafana-dashboards-provider",
+    grafana_source              = "grafana-source",
+    logging                     = "logging",
+    loki_cluster                = module.loki_coordinator.provides.loki_cluster,
+    receive_remote_write        = "receive-remote-write",
+    self_metrics_endpoint       = "self-metrics-endpoint",
+    send_datasource             = "send-datasource",
+  }
+  description = "All Juju integration endpoints where the charm is the provider"
+}
+
+output "requires" {
+  value = {
     alertmanager     = "alertmanager",
     certificates     = "certificates",
     ingress          = "ingress",
     logging_consumer = "logging-consumer",
     s3               = "s3",
     charm_tracing    = "charm-tracing",
-    # Provides
-    grafana_dashboards_provider = "grafana-dashboards-provider",
-    grafana_source              = "grafana-source",
-    logging                     = "logging",
-    loki_cluster                = "loki-cluster",
-    receive_remote_write        = "receive-remote-write",
-    self_metrics_endpoint       = "self-metrics-endpoint",
-    send_datasource             = "send-datasource",
   }
-  description = "All Juju integration endpoints which make up this product module"
+  description = "All Juju integration endpoints where the charm is the requirer"
 }
