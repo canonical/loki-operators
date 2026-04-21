@@ -23,10 +23,10 @@ This is a Terraform module facilitating the deployment of Loki solution, using t
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_loki_backend"></a> [loki\_backend](#module\_loki\_backend) | git::https://github.com/canonical/loki-operators//worker/terraform | n/a |
-| <a name="module_loki_coordinator"></a> [loki\_coordinator](#module\_loki\_coordinator) | git::https://github.com/canonical/loki-operators//coordinator/terraform | n/a |
-| <a name="module_loki_read"></a> [loki\_read](#module\_loki\_read) | git::https://github.com/canonical/loki-operators//worker/terraform | n/a |
-| <a name="module_loki_write"></a> [loki\_write](#module\_loki\_write) | git::https://github.com/canonical/loki-operators//worker/terraform | n/a |
+| <a name="module_loki_backend"></a> [loki\_backend](#module\_loki\_backend) | ../worker/terraform | n/a |
+| <a name="module_loki_coordinator"></a> [loki\_coordinator](#module\_loki\_coordinator) | ../coordinator/terraform | n/a |
+| <a name="module_loki_read"></a> [loki\_read](#module\_loki\_read) | ../worker/terraform | n/a |
+| <a name="module_loki_write"></a> [loki\_write](#module\_loki\_write) | ../worker/terraform | n/a |
 
 ## Inputs
 
