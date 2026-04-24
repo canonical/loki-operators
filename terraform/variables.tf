@@ -13,6 +13,12 @@ variable "channel" {
   }
 }
 
+variable "monolithic" {
+  description = "Deploy Loki in monolithic mode with a single all-role worker instead of separate backend/read/write workers"
+  type        = bool
+  default     = false
+}
+
 variable "anti_affinity" {
   description = "Enable anti-affinity constraints."
   type        = bool
@@ -51,6 +57,12 @@ variable "s3_endpoint" {
 
 # -------------- # App Names --------------
 
+variable "all_name" {
+  description = "Name of the Loki app with all roles"
+  type        = string
+  default     = "loki-worker"
+}
+
 variable "backend_name" {
   description = "Name of the Loki app with the backend role"
   type        = string
@@ -79,6 +91,12 @@ variable "s3_integrator_name" {
 
 variable "coordinator_config" {
   description = "Map of the coordinator configuration options"
+  type        = map(string)
+  default     = {}
+}
+
+variable "all_config" {
+  description = "Map of the all-role worker configuration options"
   type        = map(string)
   default     = {}
 }
@@ -177,6 +195,12 @@ variable "coordinator_storage_directives" {
   default     = {}
 }
 
+variable "all_worker_storage_directives" {
+  description = "Map of storage used by the all-role worker application, which defaults to 1 GB, allocated by Juju"
+  type        = map(string)
+  default     = {}
+}
+
 variable "backend_worker_storage_directives" {
   description = "Map of storage used by the backend worker application, which defaults to 1 GB, allocated by Juju"
   type        = map(string)
@@ -202,6 +226,16 @@ variable "s3_integrator_storage_directives" {
 }
 
 # -------------- # Units Per App --------------
+
+variable "all_units" {
+  description = "Number of Loki worker units with all roles"
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.all_units >= 1 || !var.monolithic
+    error_message = "The number of units must be greater than or equal to 1 when monolithic is true."
+  }
+}
 
 variable "backend_units" {
   description = "Number of Loki worker units with the backend role"

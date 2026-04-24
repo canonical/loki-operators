@@ -3,9 +3,10 @@ output "app_names" {
     {
       loki_s3_integrator = juju_application.s3_integrator.name,
       loki_coordinator   = module.loki_coordinator.app_name,
-      loki_backend       = module.loki_backend.app_name,
-      loki_read          = module.loki_read.app_name,
-      loki_write         = module.loki_write.app_name,
+      loki_all           = var.monolithic ? module.loki_all[0].app_name : null,
+      loki_backend       = var.monolithic ? null : module.loki_backend[0].app_name,
+      loki_read          = var.monolithic ? null : module.loki_read[0].app_name,
+      loki_write         = var.monolithic ? null : module.loki_write[0].app_name,
     }
   )
   description = "All application names which make up this product module"
