@@ -48,9 +48,27 @@ module "loki_coordinator" {
   units              = var.coordinator_units
 }
 
+module "loki_all" {
+  source     = "../worker/terraform"
+  depends_on = [module.loki_coordinator]
+  count      = var.monolithic ? 1 : 0
+
+  app_name    = var.all_name
+  channel     = var.channel
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.all_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
+  config = merge({
+    role-all = true
+  }, var.all_config)
+  model_uuid         = var.model_uuid
+  revision           = var.worker_revision
+  storage_directives = var.all_worker_storage_directives
+  units              = var.all_units
+}
+
 module "loki_backend" {
   source     = "../worker/terraform"
   depends_on = [module.loki_coordinator]
+  count      = var.monolithic ? 0 : 1
 
   app_name    = var.backend_name
   channel     = var.channel
@@ -67,6 +85,7 @@ module "loki_backend" {
 module "loki_read" {
   source     = "../worker/terraform"
   depends_on = [module.loki_coordinator]
+  count      = var.monolithic ? 0 : 1
 
   app_name    = var.read_name
   channel     = var.channel
@@ -83,6 +102,7 @@ module "loki_read" {
 module "loki_write" {
   source     = "../worker/terraform"
   depends_on = [module.loki_coordinator]
+  count      = var.monolithic ? 0 : 1
 
   app_name    = var.write_name
   channel     = var.channel
@@ -111,8 +131,9 @@ resource "juju_integration" "coordinator_to_s3_integrator" {
   }
 }
 
-resource "juju_integration" "coordinator_to_backend" {
+resource "juju_integration" "coordinator_to_all" {
   model_uuid = var.model_uuid
+  count      = var.monolithic ? 1 : 0
 
   application {
     name     = module.loki_coordinator.app_name
@@ -120,13 +141,29 @@ resource "juju_integration" "coordinator_to_backend" {
   }
 
   application {
-    name     = module.loki_backend.app_name
-    endpoint = module.loki_backend.requires.loki_cluster
+    name     = module.loki_all[0].app_name
+    endpoint = module.loki_all[0].requires.loki_cluster
+  }
+}
+
+resource "juju_integration" "coordinator_to_backend" {
+  model_uuid = var.model_uuid
+  count      = var.monolithic ? 0 : 1
+
+  application {
+    name     = module.loki_coordinator.app_name
+    endpoint = module.loki_coordinator.provides.loki_cluster
+  }
+
+  application {
+    name     = module.loki_backend[0].app_name
+    endpoint = module.loki_backend[0].requires.loki_cluster
   }
 }
 
 resource "juju_integration" "coordinator_to_read" {
   model_uuid = var.model_uuid
+  count      = var.monolithic ? 0 : 1
 
   application {
     name     = module.loki_coordinator.app_name
@@ -134,13 +171,14 @@ resource "juju_integration" "coordinator_to_read" {
   }
 
   application {
-    name     = module.loki_read.app_name
-    endpoint = module.loki_read.requires.loki_cluster
+    name     = module.loki_read[0].app_name
+    endpoint = module.loki_read[0].requires.loki_cluster
   }
 }
 
 resource "juju_integration" "coordinator_to_write" {
   model_uuid = var.model_uuid
+  count      = var.monolithic ? 0 : 1
 
   application {
     name     = module.loki_coordinator.app_name
@@ -148,7 +186,7 @@ resource "juju_integration" "coordinator_to_write" {
   }
 
   application {
-    name     = module.loki_write.app_name
-    endpoint = module.loki_write.requires.loki_cluster
+    name     = module.loki_write[0].app_name
+    endpoint = module.loki_write[0].requires.loki_cluster
   }
 }
