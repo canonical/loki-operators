@@ -1,7 +1,7 @@
 output "app_names" {
   value = merge(
     {
-      loki_s3_integrator = juju_application.s3_integrator.name,
+      loki_s3_integrator = var.deploy_s3_integrator ? juju_application.s3_integrator[0].name : null,
       loki_coordinator   = module.loki_coordinator.app_name,
       loki_all           = var.monolithic ? module.loki_all[0].app_name : null,
       loki_backend       = var.monolithic ? null : module.loki_backend[0].app_name,
