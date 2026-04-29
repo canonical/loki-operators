@@ -133,20 +133,23 @@ def test_build_ingester_config(loki_config: LokiConfig):
 
 
 @pytest.mark.parametrize(
-    "rate, burst_size, retention",
+    "rate, burst_size, max_streams, retention",
     [
-        (0, 0, 0),
-        (1, 2, 3),
-        (10, 20, 30),
+        (0, 0, 0, 0),
+        (1, 2, 5000, 3),
+        (10, 20, 10000, 30),
     ],
 )
-def test_build_limits_config(loki_config: LokiConfig, rate: int, burst_size: int, retention: int):
-    limits_config = loki_config._limits_config(rate, burst_size, retention)
+def test_build_limits_config(
+    loki_config: LokiConfig, rate: int, burst_size: int, max_streams: int, retention: int
+):
+    limits_config = loki_config._limits_config(rate, burst_size, max_streams, retention)
     expected_config = {
         "ingestion_rate_mb": float(rate),
         "ingestion_burst_size_mb": float(burst_size),
         "per_stream_rate_limit": f"{rate}MB",
         "per_stream_rate_limit_burst": f"{burst_size}MB",
+        "max_global_streams_per_user": max_streams,
         "split_queries_by_interval": "0",
         "retention_period": f"{retention}d",
     }
