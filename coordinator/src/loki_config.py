@@ -238,6 +238,8 @@ class LokiConfig:
             "enable_sharding": True,
             "rule_path": str(self._root_data_dir / "data-ruler"),
             "enable_api": True,
+            # We define the same S3 storage for the ruler to store rules when sharding is enabled
+            # "storage": {"local": {"directory": str(self._root_data_dir / "data-alerts")}},
             "ring": {"kvstore": {"store": "memberlist"}},
         }
 
