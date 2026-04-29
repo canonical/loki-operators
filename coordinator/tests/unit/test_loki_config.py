@@ -150,6 +150,7 @@ def test_build_limits_config(
         "per_stream_rate_limit": f"{rate}MB",
         "per_stream_rate_limit_burst": f"{burst_size}MB",
         "max_global_streams_per_user": max_streams,
+        "max_line_size_truncate": True,
         "split_queries_by_interval": "0",
         "retention_period": f"{retention}d",
     }

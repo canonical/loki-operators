@@ -225,6 +225,7 @@ config:
     max-global-streams-per-user:
       description: |
         Maximum number of active streams per user, across the cluster. 0 to disable.
+        Negative values are clamped to 0.
         When the global limit is enabled, each ingester is configured with a dynamic local limit based on
         the replication factor and the current number of healthy ingesters, and is kept updated whenever
         the number of ingesters changes.
