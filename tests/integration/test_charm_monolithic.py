@@ -82,7 +82,7 @@ def test_integrate(juju: Juju):
     juju.integrate("loki:grafana-source", "grafana")
     juju.integrate("loki:logging-consumer", "loki-mono")
     juju.integrate("loki:ingress", "traefik")
-    juju.integrate("flog:log-forwarder", "loki")
+    juju.integrate("flog:log-proxy", "loki")
 
     juju.wait(
         lambda status: jubilant.all_active(
