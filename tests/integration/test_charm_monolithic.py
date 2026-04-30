@@ -82,7 +82,7 @@ def test_integrate(juju: Juju):
     juju.integrate("loki:grafana-source", "grafana")
     juju.integrate("loki:logging-consumer", "loki-mono")
     juju.integrate("loki:ingress", "traefik")
-    juju.integrate("flog:log-proxy", "loki")
+    juju.integrate("flog:log-forwarder", "loki")
 
     juju.wait(
         lambda status: jubilant.all_active(
@@ -108,7 +108,7 @@ def test_grafana_source(juju: Juju):
     assert "loki" in datasources[0]["name"]
 
 
-@retry(wait=wait_fixed(20), stop=stop_after_attempt(10))
+@retry(wait=wait_fixed(20), stop=stop_after_attempt(6))
 def test_loki_rules_from_grafana(juju: Juju):
     """Test that Loki alert rules can be queried through Grafana's Prometheus API.
 
