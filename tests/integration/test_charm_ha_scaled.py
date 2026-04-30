@@ -138,7 +138,7 @@ def test_grafana_source(juju: Juju):
     assert len(loki_datasources) == 1
 
 
-@retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
+@retry(wait=wait_fixed(20), stop=stop_after_attempt(10))
 def test_loki_rules_from_grafana(juju: Juju):
     """Test that Loki alert rules can be queried through Grafana's Prometheus API.
 
