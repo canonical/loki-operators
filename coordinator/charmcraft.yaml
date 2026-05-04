@@ -222,6 +222,16 @@ config:
         Ref: https://grafana.com/docs/loki/latest/configure/#limits_config
       type: int
       default: 15
+    max-global-streams-per-user:
+      description: |
+        Maximum number of active streams per user, across the cluster. 0 to disable.
+        Negative values are clamped to 0.
+        When the global limit is enabled, each ingester is configured with a dynamic local limit based on
+        the replication factor and the current number of healthy ingesters, and is kept updated whenever
+        the number of ingesters changes.
+        This config option matches Loki's `max_global_streams_per_user`.
+      type: int
+      default: 5000
     retention-period:
       description: |
         Sets a global retention period for log streams in Loki. A value of 0 disables retention (default).
