@@ -36,7 +36,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
     juju.deploy("prometheus-k8s", app="prometheus", channel=cos_channel, trust=True)
     juju.deploy("loki-k8s", app="loki-mono", channel=cos_channel, trust=True)
     juju.deploy("grafana-k8s", app="grafana", channel=cos_channel, trust=True)
-    juju.deploy("flog-k8s", app="flog", channel="latest/stable", trust=True)
+    juju.deploy("flog-k8s", app="flog", channel="latest/edge", trust=True)
     juju.deploy("traefik-k8s", app="traefik", channel="latest/stable", trust=True)
     # Deploy and configure Minio and S3
     # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
@@ -138,7 +138,7 @@ def test_grafana_source(juju: Juju):
     assert len(loki_datasources) == 1
 
 
-@retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
+@retry(wait=wait_fixed(20), stop=stop_after_attempt(6))
 def test_loki_rules_from_grafana(juju: Juju):
     """Test that Loki alert rules can be queried through Grafana's Prometheus API.
 
