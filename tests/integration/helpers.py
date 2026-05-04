@@ -96,7 +96,11 @@ def get_loki_rules_from_grafana(
     # Query alert rules through Grafana's Prometheus-compatible proxy endpoint
     response = requests.get(f"{base_url}/api/prometheus/{loki_uid}/api/v1/rules")
     assert response.status_code == 200
-    return response.json()
+    response_json = response.json()
+    
+    # Grafana treats a no data as a 200 as well, so to ensure that there are Loki rules, we checks that the groups are not empty.
+    assert response_json.get("data", {}).get("groups", [])
+    return response_json
 
 
 def get_grafana_datasources_from_client_pod(

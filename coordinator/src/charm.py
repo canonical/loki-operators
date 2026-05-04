@@ -291,7 +291,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             # Update the alert rules files on disk
             self._nginx_container.remove_path(RULES_DIR, recursive=True)
             rules_file_paths: List[str] = self._push_alert_rules(loki_alerts)
-            self._push(ALERTS_HASH_PATH, alerts_hash)
             # Push the alert rules to the Loki cluster (persisted in s3)
             logger.info(
                 f"lokitool rules sync {' '.join(rules_file_paths)} --address={self.external_url}/loki --id=fake"
@@ -307,10 +306,15 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 ],
                 encoding="utf-8",
             )
-            if lokitool_output.stdout:
-                logger.info(f"lokitool: {lokitool_output.stdout.read().strip()}")
-            if lokitool_output.stderr:
-                logger.error(f"lokitool (err): {lokitool_output.stderr.read().strip()}")
+            stdout = lokitool_output.stdout.read().strip() if lokitool_output.stdout else ""
+            stderr = lokitool_output.stderr.read().strip() if lokitool_output.stderr else ""
+            if stdout:
+                logger.info(f"lokitool: {stdout}")
+            if stderr:
+                logger.error(f"lokitool (err): {stderr}")
+                return
+            # Only persist the hash once lokitool has successfully synced the rules
+            self._push(ALERTS_HASH_PATH, alerts_hash)
 
     def _update_datasource_exchange(self) -> None:
         """Update the grafana-datasource-exchange relations."""
@@ -345,7 +349,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
         # regardless of the event we are processing.
-        if self._nginx_container.can_connect():
+        if self._nginx_container.can_connect() and self.coordinator.can_handle_events:
             self._set_alerts()
 
         self._update_datasource_exchange()
