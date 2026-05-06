@@ -95,6 +95,9 @@ class LokiConfig:
             "limits_config": self._limits_config(
                 ingestion_rate_mb=int(coordinator._charm.config["ingestion-rate-mb"]),
                 ingestion_burst_size_mb=int(coordinator._charm.config["ingestion-burst-size-mb"]),
+                max_global_streams_per_user=max(
+                    0, int(coordinator._charm.config["max-global-streams-per-user"])
+                ),
                 retention_period=int(coordinator._charm.config["retention-period"]),
             ),
             "memberlist": self._memberlist_config(
@@ -176,7 +179,11 @@ class LokiConfig:
         }
 
     def _limits_config(
-        self, ingestion_rate_mb: int, ingestion_burst_size_mb: int, retention_period: int
+        self,
+        ingestion_rate_mb: int,
+        ingestion_burst_size_mb: int,
+        max_global_streams_per_user: int,
+        retention_period: int,
     ) -> Dict[str, Any]:
         # Ref: https://grafana.com/docs/loki/latest/configure/#limits_config
         return {
@@ -187,6 +194,9 @@ class LokiConfig:
             # case of one stream per user.
             "per_stream_rate_limit": f"{ingestion_rate_mb}MB",
             "per_stream_rate_limit_burst": f"{ingestion_burst_size_mb}MB",
+            "max_global_streams_per_user": max_global_streams_per_user,
+            # Default max_line_size is 256k. To avoid ingestion errors, we need to enable truncation.
+            "max_line_size_truncate": True,
             # This charmed operator is intended for running a single loki instances, so we don't need to split queries
             # https://community.grafana.com/t/too-many-outstanding-requests-on-loki-2-7-1/78249/9
             "split_queries_by_interval": "0",
