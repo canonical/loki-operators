@@ -36,14 +36,6 @@ MINIMAL_DEPLOYMENT = {
     "backend",
 }
 
-"""The set of roles that need to be allocated for the
-deployment to be considered robust according to the official recommendations/guidelines."""
-RECOMMENDED_DEPLOYMENT = {
-    "read": 3,
-    "write": 3,
-    "backend": 3,
-}
-
 # The minimum number of workers per role to enable replication
 REPLICATION_MIN_WORKERS = 3
 # The default amount of replicas to set when there are enough workers per role;
@@ -61,7 +53,6 @@ LOKI_ROLES_CONFIG = ClusterRolesConfig(
     roles=ROLES,
     meta_roles=META_ROLES,
     minimal_deployment=MINIMAL_DEPLOYMENT,
-    recommended_deployment=RECOMMENDED_DEPLOYMENT,
 )
 
 
