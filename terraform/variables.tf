@@ -24,7 +24,6 @@ variable "anti_affinity" {
 variable "s3_integrator_channel" {
   description = "Channel that the s3-integrator application is deployed from"
   type        = string
-  # TODO: I need to update this to 2/stable if COS works
   default     = "2/stable"
 }
 
