@@ -12,8 +12,8 @@ def loki_config() -> LokiConfig:
     return LokiConfig()
 
 
-@pytest.fixture(scope="module")
-def coordinator():
+def _make_coordinator(tls_ca_path=None):
+    """Create a mock coordinator with optional TLS CA path for S3."""
     coord = MagicMock()
     coord.topology = MagicMock()
     coord.cluster = MagicMock()
@@ -28,19 +28,30 @@ def coordinator():
         return_value=["http://some.loki.worker.0:8080", "http://some.loki.worker.1:8080"]
     )
     coord.s3_ready = MagicMock(return_value=True)
-    type(coord)._s3_config = PropertyMock(
-        return_value={
-            "endpoint": "s3.com:port",
-            "access_key_id": "your_access_key",
-            "secret_access_key": "your_secret_key",
-            "bucket_name": "your_bucket",
-            "region": "your_region",
-            "insecure": "true",
-        }
-    )
+    s3_config = {
+        "endpoint": "s3.com:port",
+        "access_key_id": "your_access_key",
+        "secret_access_key": "your_secret_key",
+        "bucket_name": "your_bucket",
+        "region": "your_region",
+        "insecure": "true",
+    }
+    if tls_ca_path:
+        s3_config["tls_ca_path"] = tls_ca_path
+    type(coord)._s3_config = PropertyMock(return_value=s3_config)
     coord.nginx = MagicMock()
     coord.nginx.are_certificates_on_disk = MagicMock(return_value=True)
     return coord
+
+
+@pytest.fixture(scope="module")
+def coordinator():
+    return _make_coordinator()
+
+
+@pytest.fixture(scope="module")
+def coordinator_with_tls():
+    return _make_coordinator(tls_ca_path="/etc/worker/s3_ca.crt")
 
 
 @pytest.fixture(scope="module")
@@ -97,6 +108,15 @@ def test_build_common_config(loki_config, coordinator, addresses_by_role, replic
         },
     }
     assert common_config == expected_config_http
+
+
+def test_build_common_config_with_tls(loki_config, coordinator_with_tls):
+    coordinator_with_tls.cluster.gather_addresses_by_role.return_value = {
+        "backend": ["address.one", "address.two", "address.three"]
+    }
+    common_config = loki_config._common_config(coordinator_with_tls)
+    s3_http_config = common_config["storage"]["s3"]["http_config"]
+    assert s3_http_config["ca_file"] == "/etc/worker/s3_ca.crt"
 
 
 @pytest.mark.parametrize(
@@ -225,6 +245,12 @@ def test_build_storage_config(loki_config: LokiConfig, coordinator):
         },
     }
     assert storage_config == expected_config
+
+
+def test_build_storage_config_with_tls(loki_config: LokiConfig, coordinator_with_tls):
+    storage_config = loki_config._storage_config(coordinator_with_tls)
+    aws_http_config = storage_config["aws"]["http_config"]
+    assert aws_http_config["ca_file"] == "/etc/worker/s3_ca.crt"
 
 
 def test_build_server_config(loki_config: LokiConfig, coordinator):
