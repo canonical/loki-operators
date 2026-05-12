@@ -27,7 +27,7 @@ def _make_coordinator(tls_ca_path=None):
     coord.cluster.gather_addresses = MagicMock(
         return_value=["http://some.loki.worker.0:8080", "http://some.loki.worker.1:8080"]
     )
-    coord.s3_ready = MagicMock(return_value=True)
+    coord.s3_ready = True
     s3_config = {
         "endpoint": "s3.com:port",
         "access_key_id": "your_access_key",
