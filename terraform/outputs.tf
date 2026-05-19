@@ -19,7 +19,7 @@ output "provides" {
     loki_cluster                = module.loki_coordinator.provides.loki_cluster,
     receive_remote_write        = "receive-remote-write",
     self_metrics_endpoint       = "self-metrics-endpoint",
-    provide_cmr_mesh            = "provide-cmr-mesh",
+    provide_cmr_mesh            = module.loki_coordinator.provides.provide_cmr_mesh,
     send_datasource             = "send-datasource",
   }
   description = "All Juju integration endpoints where the charm is the provider"
@@ -33,8 +33,8 @@ output "requires" {
     logging_consumer = "logging-consumer",
     s3               = "s3",
     charm_tracing    = "charm-tracing",
-    require_cmr_mesh = "require-cmr-mesh",
-    service_mesh     = "service-mesh",
+    require_cmr_mesh = module.loki_coordinator.provides.require_cmr_mesh,
+    service_mesh     = module.loki_coordinator.provides.service_mesh,
   }
   description = "All Juju integration endpoints where the charm is the requirer"
 }
