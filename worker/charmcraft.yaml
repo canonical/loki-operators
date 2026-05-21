@@ -4,11 +4,30 @@ name: loki-worker-k8s
 type: charm
 summary: Loki for Kubernetes clusters.
 description: |
-  Grafana Loki is an open source software project that provides a scalable long-term storage for Prometheus.
-  This charm deploys and operates Loki on Kubernetes clusters
+  `loki-worker-k8s` is a charm for [Loki].
+  It is an essential part of COS HA.
+
+
+  This Charmed Operator handles deployment, scaling, configuration, and Day 2 operations specific to Loki.
+
+  This operator drives the Loki worker applications, and it can be composed with other operators to deliver a complex application or service.
+
+
+  The loki-worker charm manages a single instance of loki, which can take various roles. The consistency of the various loki workers and their roles is monitored by the [loki-coordinator][Loki coordinator operator] charm.
+
+
+  This charm is:
+  - part of the COS HA bundle
+  - intended to be used together with [`alertmanager-k8s`][Alertmanager operator]
+
+
+  [Loki]: https://grafana.com/oss/loki/
+  [COS Lite bundle]: https://charmhub.io/cos-lite
+  [Alertmanager operator]: https://charmhub.io/alertmanager-k8s
+  [Loki coordinator operator]: https://charmhub.io/loki-coordinator-k8s
 
 links:
-  documentation: https://discourse.charmhub.io/t/loki-worker-k8s-operator-docs-index/15536
+  documentation: https://documentation.ubuntu.com/observability/track-2/
   website: https://charmhub.io/loki-worker-k8s
   source: https://github.com/canonical/loki-worker-k8s-operator
   issues: https://github.com/canonical/loki-worker-k8s-operator/issues
