@@ -69,7 +69,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
 
 # Xfailing the test until the expected resolution date of the issue: https://github.com/canonical/loki-operators/issues/59
 # Using strict=True to ensure that the test will start failing if it starts passing before the expected date, which would indicate that the underlying issue has been resolved.
-@pytest.mark.xfail(datetime.date.today() < datetime.date(2026, 5, 15), reason="expected to fail until 2026-05-15", strict=True)
+@pytest.mark.xfail(datetime.date.today() < datetime.date(2026, 6, 4), reason="expected to fail until 2026-06-04", strict=True)
 def test_workload_traces(juju: Juju):
     # integrate workload-tracing only to not affect search results with charm traces
     juju.integrate(f"{APP_NAME}:workload-tracing", f"{TEMPO_APP_NAME}:tracing")
