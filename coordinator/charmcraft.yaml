@@ -15,7 +15,7 @@ description: |
     This operator drives the Loki worker applications, and it can be composed with other operators to deliver a complex application or service.
 
 
-    Loki-coordinator's primary task is to ensure that a cluster of Loki worker nodes is consistent (i.e. all required roles are assigned to a certain number of units). Its secondary function is to provide a unified configuration point for the whole cluster. Finally, it deploys and operates nginx to route traffic to the related workers. 
+    Loki Coordinator's primary task is to ensure that a cluster of Loki worker nodes is consistent (i.e. all required roles are assigned to a certain number of units). Its secondary function is to provide a unified configuration point for the whole cluster. Finally, it deploys and operates `nginx` to route traffic to the related workers. 
 
     This charm on its own does not deploy or operate Loki; the `loki` bundle deploys a `loki-coordinator` instance and a `loki-worker` instance and integrates them. Only then, you will have a functional Loki deployment.
 
