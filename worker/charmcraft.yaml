@@ -10,7 +10,7 @@ description: |
 
   This Charmed Operator handles deployment, scaling, configuration, and Day 2 operations specific to Loki.
 
-  This operator drives the Loki worker applications, and it can be composed with other operators to deliver a complex application or service.
+  This operator drives the Loki worker applications, and it can be composed with other operators such as Mimir and Tempo to provide a complete and highly available observability solution.
 
 
   The Loki worker charm manages a single instance of Loki, which can take various roles. The consistency of the various Loki workers and their roles is monitored by the [loki-coordinator][Loki coordinator operator] charm.
