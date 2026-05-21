@@ -13,7 +13,7 @@ description: |
   This operator drives the Loki worker applications, and it can be composed with other operators to deliver a complex application or service.
 
 
-  The loki-worker charm manages a single instance of loki, which can take various roles. The consistency of the various loki workers and their roles is monitored by the [loki-coordinator][Loki coordinator operator] charm.
+  The Loki worker charm manages a single instance of Loki, which can take various roles. The consistency of the various Loki workers and their roles is monitored by the [loki-coordinator][Loki coordinator operator] charm.
 
 
   This charm is:
