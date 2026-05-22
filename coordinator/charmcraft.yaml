@@ -5,10 +5,34 @@ name: loki-coordinator-k8s
 type: charm
 summary: Loki coordinator
 description: |
-    Loki coordinator.
+    `loki-coordinator-k8s` is a charm that coordinates the operations of [`loki-worker`][Loki worker operator] charms and routes traffic to them.
+
+    It is an essential part of COS HA.
+
+
+    This Charmed Operator handles deployment, scaling, configuration, and Day 2 operations specific to [Loki].
+
+    This operator drives the Loki worker applications, and it can be composed with other operators to deliver a complex application or service.
+
+
+    Loki Coordinator's primary task is to ensure that a cluster of Loki worker nodes is consistent (i.e. all required roles are assigned to a certain number of units). Its secondary function is to provide a unified configuration point for the whole cluster. Finally, it deploys and operates `nginx` to route traffic to the related workers. 
+
+    This charm on its own does not deploy or operate Loki; the `loki` bundle deploys a `loki-coordinator` instance and a `loki-worker` instance and integrates them. You will need to configure an S3 compatible storage solution as well. This can be done with Microceph and the S3 Integrator charm. Only then, you will have a functional Loki deployment.
+
+
+    This charm is:
+    - part of the COS HA bundle
+    - intended to be used together with [`alertmanager-k8s`][Alertmanager operator]
+
+
+    [Loki]: https://grafana.com/oss/loki/
+    [COS Lite bundle]: https://charmhub.io/cos-lite
+    [Alertmanager operator]: https://charmhub.io/alertmanager-k8s
+    [Loki worker operator]: https://charmhub.io/loki-worker-k8s
+
 
 links:
-  documentation: https://discourse.charmhub.io/t/loki-coordinator-k8s-operator-docs-index/15491
+  documentation: https://documentation.ubuntu.com/observability/track-2/
   website: https://charmhub.io/loki-coordinator-k8s
   source: https://github.com/canonical/loki-coordinator-k8s-operator
   issues: https://github.com/canonical/loki-coordinator-k8s-operator/issues
