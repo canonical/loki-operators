@@ -15,12 +15,13 @@ import logging
 import jubilant
 import pytest
 import yaml
+import requests
 from helpers import (
     ACCESS_KEY,
     SECRET_KEY,
     configure_minio,
     configure_s3_integrator,
-    query_loki_series_from_client_localhost,
+    get_unit_address,
 )
 from jubilant import Juju
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -113,6 +114,10 @@ def test_worker_has_tls_config(juju: Juju):
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
 def test_logs_in_loki_with_tls(juju: Juju):
     """Check that logs can be ingested and queried with TLS enabled."""
-    result = query_loki_series_from_client_localhost(juju)
-    assert result
+    # With TLS enabled, we must use HTTPS. We use verify=False since we're using self-signed certs.
+    loki_url = get_unit_address(juju, "loki", 0)
+    response = requests.get(f"https://{loki_url}:443/loki/api/v1/series", verify=False)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == "success"
     assert result["data"][0]["juju_charm"] == "flog-k8s"
