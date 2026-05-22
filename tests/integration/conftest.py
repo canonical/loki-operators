@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 @fixture(scope="session")
 def cos_channel():
-    return "dev/edge"
+    return "2/edge"
 
 
 @fixture(scope="session")
