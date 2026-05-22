@@ -96,9 +96,9 @@ def test_integrate(juju: Juju):
 def test_worker_has_tls_config(juju: Juju):
     """Verify that the worker has TLS configuration after integrating with certificates."""
     # Check that the worker config contains TLS settings
-    # The worker config is at /etc/worker/config.yaml
-    task = juju.exec("cat /etc/worker/config.yaml", unit="worker/0")
-    config = yaml.safe_load(task.stdout)
+    # The worker config is at /etc/worker/config.yaml in the workload container
+    output = juju.ssh("worker/0", "cat /etc/worker/config.yaml", container="loki")
+    config = yaml.safe_load(output)
 
     # Verify server section has TLS config
     assert "server" in config, "Server section missing from worker config"
