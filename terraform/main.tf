@@ -1,3 +1,68 @@
+module "loki_coordinator" {
+  source             = "../coordinator/terraform"
+  app_name           = "loki"
+  channel            = var.channel
+  constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=loki,anti-pod.topology-key=kubernetes.io/hostname" : var.coordinator_constraints
+  model_uuid         = var.model_uuid
+  resources          = var.coordinator_resources
+  revision           = var.coordinator_revision
+  storage_directives = var.coordinator_storage_directives
+  units              = var.coordinator_units
+}
+
+module "loki_backend" {
+  source     = "../worker/terraform"
+  depends_on = [module.loki_coordinator]
+
+  app_name    = var.backend_name
+  channel     = var.channel
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.backend_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
+  config = merge({
+    role-backend = true
+  }, var.backend_config)
+  model_uuid         = var.model_uuid
+  resources          = var.worker_resources
+  revision           = var.worker_revision
+  storage_directives = var.backend_worker_storage_directives
+  units              = var.backend_units
+}
+
+module "loki_read" {
+  source     = "../worker/terraform"
+  depends_on = [module.loki_coordinator]
+
+  app_name    = var.read_name
+  channel     = var.channel
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.read_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
+  config = merge({
+    role-read = true
+  }, var.read_config)
+  model_uuid         = var.model_uuid
+  resources          = var.worker_resources
+  revision           = var.worker_revision
+  storage_directives = var.read_worker_storage_directives
+  units              = var.read_units
+}
+
+module "loki_write" {
+  source     = "../worker/terraform"
+  depends_on = [module.loki_coordinator]
+
+  app_name    = var.write_name
+  channel     = var.channel
+  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.write_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
+  config = merge({
+    role-write = true
+  }, var.write_config)
+  model_uuid         = var.model_uuid
+  resources          = var.worker_resources
+  revision           = var.worker_revision
+  storage_directives = var.write_worker_storage_directives
+  units              = var.write_units
+}
+
+# -------------- # S3-integrator --------------
+
 resource "juju_secret" "loki_s3_credentials_secret" {
   model_uuid = var.model_uuid
   name       = "loki_s3_credentials"
@@ -16,7 +81,6 @@ resource "juju_access_secret" "loki_s3_secret_access" {
   secret_id = juju_secret.loki_s3_credentials_secret.secret_id
 }
 
-# TODO: Replace s3_integrator resource to use its remote terraform module once available
 resource "juju_application" "s3_integrator" {
   config = merge({
     endpoint    = var.s3_endpoint
@@ -35,65 +99,6 @@ resource "juju_application" "s3_integrator" {
     channel  = var.s3_integrator_channel
     revision = var.s3_integrator_revision
   }
-}
-
-module "loki_coordinator" {
-  source             = "../coordinator/terraform"
-  app_name           = "loki"
-  channel            = var.channel
-  constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=loki,anti-pod.topology-key=kubernetes.io/hostname" : var.coordinator_constraints
-  model_uuid         = var.model_uuid
-  revision           = var.coordinator_revision
-  storage_directives = var.coordinator_storage_directives
-  units              = var.coordinator_units
-}
-
-module "loki_backend" {
-  source     = "../worker/terraform"
-  depends_on = [module.loki_coordinator]
-
-  app_name    = var.backend_name
-  channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.backend_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
-  config = merge({
-    role-backend = true
-  }, var.backend_config)
-  model_uuid         = var.model_uuid
-  revision           = var.worker_revision
-  storage_directives = var.backend_worker_storage_directives
-  units              = var.backend_units
-}
-
-module "loki_read" {
-  source     = "../worker/terraform"
-  depends_on = [module.loki_coordinator]
-
-  app_name    = var.read_name
-  channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.read_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
-  config = merge({
-    role-read = true
-  }, var.read_config)
-  model_uuid         = var.model_uuid
-  revision           = var.worker_revision
-  storage_directives = var.read_worker_storage_directives
-  units              = var.read_units
-}
-
-module "loki_write" {
-  source     = "../worker/terraform"
-  depends_on = [module.loki_coordinator]
-
-  app_name    = var.write_name
-  channel     = var.channel
-  constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.write_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
-  config = merge({
-    role-write = true
-  }, var.write_config)
-  model_uuid         = var.model_uuid
-  revision           = var.worker_revision
-  storage_directives = var.write_worker_storage_directives
-  units              = var.write_units
 }
 
 # -------------- # Integrations --------------
