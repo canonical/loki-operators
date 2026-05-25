@@ -54,8 +54,8 @@ jobs:
             .github/**
   release-worker:
     needs: charms-changed
-    if: needs.charms-changed.outputs.worker_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-release.yaml@main
+    if: github.event_name == 'workflow_dispatch' || needs.charms-changed.outputs.worker_changed == 'true'
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v2
     secrets: inherit
     with:
       default-track: dev
@@ -64,8 +64,8 @@ jobs:
       enable-integration: false
   release-coordinator:
     needs: charms-changed
-    if: needs.charms-changed.outputs.coordinator_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-release.yaml@main
+    if: github.event_name == 'workflow_dispatch' || needs.charms-changed.outputs.coordinator_changed == 'true'
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v2
     secrets: inherit
     with:
       default-track: dev
