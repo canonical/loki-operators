@@ -61,7 +61,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
 
     # wait until charms settle down
     juju.wait(
-        lambda status: jubilant.all_active(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(
             status, APP_WORKER_NAME, APP_NAME, "minio", "s3", TEMPO_APP_NAME, TEMPO_WORKER_APP_NAME
         ),
         timeout=1000,
@@ -75,7 +75,7 @@ def test_workload_traces(juju: Juju):
     juju.integrate(f"{APP_NAME}:workload-tracing", f"{TEMPO_APP_NAME}:tracing")
 
     juju.wait(
-        lambda status: jubilant.all_active(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(
             status, APP_NAME, TEMPO_APP_NAME, TEMPO_WORKER_APP_NAME, APP_WORKER_NAME
         ),
         timeout=300,
