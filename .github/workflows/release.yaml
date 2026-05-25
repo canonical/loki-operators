@@ -1,6 +1,7 @@
 name: Release Charm to Edge and Publish Libraries
 
 on:
+  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -11,7 +12,8 @@ permissions:
   security-events: write
   # Only required for workflows in private repositories
   actions: read
-  contents: read
+  # Write permission needed for the reusable workflow to push git tags
+  contents: write
 
 jobs:
   charms-changed:
@@ -52,7 +54,7 @@ jobs:
             .github/**
   release-worker:
     needs: charms-changed
-    if: needs.charms-changed.outputs.worker_changed == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.charms-changed.outputs.worker_changed == 'true'
     uses: canonical/observability/.github/workflows/charm-release.yaml@v2
     secrets: inherit
     with:
@@ -62,7 +64,7 @@ jobs:
       enable-integration: false
   release-coordinator:
     needs: charms-changed
-    if: needs.charms-changed.outputs.coordinator_changed == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.charms-changed.outputs.coordinator_changed == 'true'
     uses: canonical/observability/.github/workflows/charm-release.yaml@v2
     secrets: inherit
     with:
