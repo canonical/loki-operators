@@ -6,7 +6,7 @@ version = "0.0"
 requires-python = "~=3.8"
 
 dependencies = [
-  "coordinated-workers",
+  "coordinated-workers<2.1",
 ]
 
 [project.optional-dependencies]
