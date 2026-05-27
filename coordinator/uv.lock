@@ -733,6 +733,7 @@ dependencies = [
     { name = "charmed-service-mesh-helpers" },
     { name = "coordinated-workers" },
     { name = "lightkube-extensions" },
+    { name = "ops", extra = ["tracing"] },
 ]
 
 [package.optional-dependencies]
@@ -764,6 +765,7 @@ requires-dist = [
     { name = "lightkube-extensions" },
     { name = "minio", marker = "extra == 'dev'" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "ops", extras = ["tracing"] },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = ">2.0.0" },

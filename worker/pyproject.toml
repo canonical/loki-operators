@@ -9,6 +9,7 @@ dependencies = [
   "coordinated-workers",
   "charmed-service-mesh-helpers>=0.2.0",
   "lightkube-extensions",
+  "ops[tracing]",
 ]
 
 [project.optional-dependencies]

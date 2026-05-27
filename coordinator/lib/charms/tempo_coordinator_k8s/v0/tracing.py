@@ -966,7 +966,7 @@ def charm_tracing_config(
      proceed with charm tracing (with or without tls, as appropriate)
 
     Usage:
-    >>> from lib.charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+    >>> from ops.tracing import trace_charm
     >>> from lib.charms.tempo_coordinator_k8s.v0.tracing import charm_tracing_config
     >>> @trace_charm(tracing_endpoint="my_endpoint", cert_path="cert_path")
     >>> class MyCharm(...):

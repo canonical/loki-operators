@@ -657,6 +657,7 @@ dependencies = [
     { name = "charmed-service-mesh-helpers" },
     { name = "coordinated-workers" },
     { name = "lightkube-extensions" },
+    { name = "ops", extra = ["tracing"] },
 ]
 
 [package.optional-dependencies]
@@ -682,6 +683,7 @@ requires-dist = [
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "lightkube-extensions" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "ops", extras = ["tracing"] },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = "~=1.0" },
