@@ -28,17 +28,19 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.setup
-def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
+def test_build_and_deploy(juju: Juju, coordinator_charm, worker_charm, cos_channel):
     """Build the charm-under-test and deploy it together with related charms."""
     charm, channel, resources = coordinator_charm
+    worker_charm_path, worker_charm_channel, worker_charm_resources = worker_charm
     # deploy charms of interest
     juju.deploy(charm, app=APP_NAME, channel=channel, resources=resources, trust=True)
     juju.deploy(
-        "loki-worker-k8s",
-        app=APP_WORKER_NAME,
-        channel=cos_channel,
-        config={"role-all": True},
+        worker_charm_path,
+        app=APP_WORKER_NAME, 
+        channel=worker_charm_channel,
+        resources=worker_charm_resources,
         trust=True,
+        config={"role-all": True},
     )
     juju.deploy(
         "minio",
