@@ -10,10 +10,7 @@ import jubilant
 import pytest
 import requests
 from helpers import (
-    ACCESS_KEY,
-    SECRET_KEY,
-    configure_minio,
-    configure_s3_integrator,
+    deploy_swfs,
     get_grafana_datasources_from_client_pod,
     get_istio_ingress_ip,
     get_prometheus_targets_from_client_pod,
@@ -38,20 +35,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel, mesh_chann
     juju.deploy("istio-k8s", app="istio", channel=mesh_channel, trust=True)
     juju.deploy("istio-beacon-k8s", app="istio-beacon", channel=mesh_channel, trust=True)
     juju.deploy("istio-ingress-k8s", app="istio-ingress", channel=mesh_channel, trust=True)
-    # Deploy and configure Minio and S3
-    # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-        trust=True,
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable", trust=True)
-
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=1000)
-    juju.wait(lambda status: jubilant.all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
+    deploy_swfs(juju)
 
     # network changes might cause momentary error states
     juju.wait(
@@ -60,8 +44,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel, mesh_chann
             "prometheus",
             "loki-mono",
             "grafana",
-            "minio",
-            "s3",
+            "swfs",
             "flog",
             "istio",
             "istio-beacon",
@@ -89,7 +72,7 @@ def test_deploy_workers(juju: Juju, worker_charm):
 
 @pytest.mark.setup
 def test_integrate(juju: Juju):
-    juju.integrate("loki:s3", "s3")
+    juju.integrate("loki:s3", "swfs")
     juju.integrate("loki:loki-cluster", "worker")
     juju.integrate("loki:self-metrics-endpoint", "prometheus")
     juju.integrate("loki:grafana-dashboards-provider", "grafana")
@@ -106,8 +89,7 @@ def test_integrate(juju: Juju):
             "loki-mono",
             "grafana",
             "flog",
-            "minio",
-            "s3",
+            "swfs",
             "worker",
             "istio-ingress",
         ),
@@ -119,7 +101,7 @@ def test_integrate(juju: Juju):
 def test_enable_service_mesh(juju: Juju):
     """Enable service mesh."""
     # This is not done in the previous step for two reasons
-    # 1. Not all the apps are mesh enabled yet (for eg. minio) so we need to let the apps establish comms before we enable service mesh.
+    # 1. Not all the apps are mesh enabled yet (for eg. swfs) so we need to let the apps establish comms before we enable service mesh.
     # 2. the `service_mesh` helper also provides a way to parametrize and run existing tests with service mesh enabled.
     service_mesh(
         enable=True,

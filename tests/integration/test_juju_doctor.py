@@ -1,6 +1,6 @@
 import pytest
 import sh
-from helpers import ACCESS_KEY, SECRET_KEY, configure_minio, configure_s3_integrator
+from helpers import deploy_swfs
 from jubilant import Juju, all_active, all_blocked
 
 
@@ -37,20 +37,11 @@ def test_deploy_workers(juju: Juju, worker_charm):
     )
 
 
-def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm):
+def test_all_active_when_coordinator_and_swfs_added(juju: Juju, coordinator_charm):
     # GIVEN a model with workers
 
     # WHEN deploying and integrating the minimal loki cluster
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable")
-    juju.wait(lambda status: all_active(status, "minio"), timeout=1000)
-    juju.wait(lambda status: all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
+    deploy_swfs(juju)
 
     charm_url, channel, resources = coordinator_charm
     juju.deploy(
@@ -60,7 +51,7 @@ def test_all_active_when_coordinator_and_s3_added(juju: Juju, coordinator_charm)
         resources=resources,
         trust=True,
     )
-    juju.integrate("loki:s3", "s3")
+    juju.integrate("loki:s3", "swfs")
     juju.integrate("loki:loki-cluster", "read")
     juju.integrate("loki:loki-cluster", "write")
     juju.integrate("loki:loki-cluster", "backend")
