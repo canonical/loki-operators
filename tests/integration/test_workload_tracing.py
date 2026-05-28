@@ -4,7 +4,6 @@
 
 # pyright: reportAttributeAccessIssue=false
 
-import datetime
 import logging
 
 import jubilant
