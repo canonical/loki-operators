@@ -10,40 +10,18 @@ import requests
 from jubilant import Juju
 from lightkube import Client
 from lightkube.generic_resource import create_namespaced_resource
-from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
-ACCESS_KEY = "AccessKey"
-SECRET_KEY = "SecretKey"
+SWFS_APP = "swfs"
+SWFS_CHANNEL = "latest/edge"
 
 
-def configure_minio(juju: Juju, bucket_name: str = "loki"):
-    """Create the bucket in Minio for object storage."""
-    minio_addr = get_unit_address(juju, "minio", 0)
-    mc_client = Minio(
-        f"{minio_addr}:9000",
-        access_key=ACCESS_KEY,
-        secret_key=SECRET_KEY,
-        secure=False,
-    )
-    found = mc_client.bucket_exists(bucket_name)
-    if not found:
-        mc_client.make_bucket(bucket_name)
-
-
-def configure_s3_integrator(juju: Juju, s3_app: str = "s3", bucket_name: str = "loki"):
-    """Configure the S3 integrator charm with Minio credentials."""
-    juju.config(s3_app, {
-        "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
-        "bucket": bucket_name,
-    })
-    task = juju.run(f"{s3_app}/leader", "sync-s3-credentials", params={
-        "access-key": ACCESS_KEY,
-        "secret-key": SECRET_KEY,
-    })
-    assert task.status == "completed"
+def deploy_swfs(juju: Juju, swfs_app: str = SWFS_APP):
+    """Deploy SeaweedFS as an S3 test backend."""
+    juju.deploy("seaweedfs-k8s", app=swfs_app, channel=SWFS_CHANNEL)
+    juju.wait(lambda status: jubilant.all_active(status, swfs_app), timeout=1000)
 
 
 def get_unit_address(juju: Juju, app_name: str, unit_no: int) -> str:
@@ -189,24 +167,19 @@ def get_traefik_proxied_endpoints(
 
 
 def deploy_tempo_cluster(juju: Juju, cos_channel: str):
-    """Deploy Tempo in its HA version together with Minio and s3-integrator."""
+    """Deploy Tempo in its HA version and relate it to SeaweedFS."""
     tempo_app = "tempo"
     worker_app = "tempo-worker"
-    s3_app = "s3-tempo"
 
     juju.deploy("tempo-worker-k8s", app=worker_app, channel=cos_channel, trust=True)
     juju.deploy("tempo-coordinator-k8s", app=tempo_app, channel=cos_channel, trust=True)
-    juju.deploy("s3-integrator", app=s3_app, channel="edge")
 
-    juju.integrate(f"{tempo_app}:s3", f"{s3_app}:s3-credentials")
+    juju.wait(lambda status: jubilant.all_active(status, SWFS_APP), timeout=1000)
+    juju.integrate(f"{tempo_app}:s3", SWFS_APP)
     juju.integrate(f"{tempo_app}:tempo-cluster", f"{worker_app}:tempo-cluster")
 
-    configure_minio(juju, bucket_name="tempo")
-    juju.wait(lambda status: jubilant.all_blocked(status, s3_app), timeout=1000)
-    configure_s3_integrator(juju, bucket_name="tempo", s3_app=s3_app)
-
     juju.wait(
-        lambda status: jubilant.all_active(status, tempo_app, worker_app, s3_app),
+        lambda status: jubilant.all_active(status, tempo_app, worker_app, SWFS_APP),
         timeout=2000,
         delay=5,
         successes=3,

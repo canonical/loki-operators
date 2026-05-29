@@ -9,10 +9,7 @@ import logging
 import jubilant
 import pytest
 from helpers import (
-    ACCESS_KEY,
-    SECRET_KEY,
-    configure_minio,
-    configure_s3_integrator,
+    deploy_swfs,
     deploy_tempo_cluster,
     get_application_ip,
     get_traces_patiently,
@@ -42,19 +39,8 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, worker_charm, cos_chann
         trust=True,
         config={"role-all": True},
     )
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable")
-
-    # configure s3 integrator and minio for loki
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=1000)
-    juju.wait(lambda status: jubilant.all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
-    juju.integrate(f"{APP_NAME}:s3", "s3")
+    deploy_swfs(juju)
+    juju.integrate(f"{APP_NAME}:s3", "swfs")
     juju.integrate(f"{APP_NAME}:loki-cluster", APP_WORKER_NAME)
 
     # deploy Tempo cluster
@@ -63,7 +49,7 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, worker_charm, cos_chann
     # wait until charms settle down
     juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(
-            status, APP_WORKER_NAME, APP_NAME, "minio", "s3", TEMPO_APP_NAME, TEMPO_WORKER_APP_NAME
+            status, APP_WORKER_NAME, APP_NAME, "swfs", TEMPO_APP_NAME, TEMPO_WORKER_APP_NAME
         ),
         timeout=1000,
     )

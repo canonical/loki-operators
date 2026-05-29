@@ -10,10 +10,7 @@ import jubilant
 import pytest
 import requests
 from helpers import (
-    ACCESS_KEY,
-    SECRET_KEY,
-    configure_minio,
-    configure_s3_integrator,
+    deploy_swfs,
     get_grafana_datasources_from_client_localhost,
     get_loki_rules_from_grafana,
     get_prometheus_targets_from_client_localhost,
@@ -38,24 +35,11 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
     juju.deploy("grafana-k8s", app="grafana", channel=cos_channel, trust=True)
     juju.deploy("flog-k8s", app="flog", channel="latest/edge", trust=True)
     juju.deploy("traefik-k8s", app="traefik", channel="latest/stable", trust=True)
-    # Deploy and configure Minio and S3
-    # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-        trust=True,
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable", trust=True)
-
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=1000)
-    juju.wait(lambda status: jubilant.all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
+    deploy_swfs(juju)
 
     juju.wait(
         lambda status: jubilant.all_active(
-            status, "prometheus", "loki-mono", "grafana", "minio", "s3", "flog"
+            status, "prometheus", "loki-mono", "grafana", "swfs", "flog"
         ),
         timeout=1000,
     )
@@ -99,7 +83,7 @@ def test_deploy_workers(juju: Juju, cos_channel):
 
 @pytest.mark.setup
 def test_integrate(juju: Juju):
-    juju.integrate("loki:s3", "s3")
+    juju.integrate("loki:s3", "swfs")
     juju.integrate("loki:loki-cluster", "worker-read")
     juju.integrate("loki:loki-cluster", "worker-write")
     juju.integrate("loki:loki-cluster", "worker-backend")
@@ -118,8 +102,7 @@ def test_integrate(juju: Juju):
             "loki-mono",
             "grafana",
             "flog",
-            "minio",
-            "s3",
+            "swfs",
             "worker-read",
             "worker-write",
             "worker-backend",

@@ -11,10 +11,7 @@ import logging
 import jubilant
 import pytest
 from helpers import (
-    ACCESS_KEY,
-    SECRET_KEY,
-    configure_minio,
-    configure_s3_integrator,
+    deploy_swfs,
     query_loki_series_from_client_localhost,
 )
 from jubilant import Juju
@@ -28,22 +25,10 @@ def test_deploy_from_edge(juju: Juju, cos_channel):
     """Deploy the coordinator and infrastructure from the edge channel."""
     juju.deploy("loki-coordinator-k8s", app="loki", channel=cos_channel, trust=True)
     juju.deploy("flog-k8s", app="flog", channel="latest/stable", trust=True)
-    # Deploy and configure Minio and S3
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-        trust=True,
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable", trust=True)
-
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=1000)
-    juju.wait(lambda status: jubilant.all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
+    deploy_swfs(juju)
 
     juju.wait(
-        lambda status: jubilant.all_active(status, "minio", "s3", "flog"),
+        lambda status: jubilant.all_active(status, "swfs", "flog"),
         timeout=1000,
     )
     juju.wait(lambda status: jubilant.all_blocked(status, "loki"), timeout=1000)
@@ -65,13 +50,13 @@ def test_deploy_workers_from_edge(juju: Juju, cos_channel):
 @pytest.mark.setup
 def test_integrate(juju: Juju):
     """Set up the integrations between all applications."""
-    juju.integrate("loki:s3", "s3")
+    juju.integrate("loki:s3", "swfs")
     juju.integrate("loki:loki-cluster", "worker")
     juju.integrate("flog:log-proxy", "loki")
 
     juju.wait(
         lambda status: jubilant.all_active(
-            status, "loki", "flog", "minio", "s3", "worker"
+            status, "loki", "flog", "swfs", "worker"
         ),
         timeout=1000,
     )
@@ -94,7 +79,7 @@ def test_upgrade(juju: Juju, coordinator_charm, worker_charm):
 
     juju.wait(
         lambda status: jubilant.all_active(
-            status, "loki", "flog", "minio", "s3", "worker"
+            status, "loki", "flog", "swfs", "worker"
         ),
         timeout=1000,
     )

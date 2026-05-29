@@ -17,10 +17,7 @@ import pytest
 import yaml
 import requests
 from helpers import (
-    ACCESS_KEY,
-    SECRET_KEY,
-    configure_minio,
-    configure_s3_integrator,
+    deploy_swfs,
     get_unit_address,
 )
 from jubilant import Juju
@@ -35,25 +32,14 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
     charm, channel, resources = coordinator_charm
     juju.deploy(charm, app="loki", channel=channel, resources=resources, trust=True)
     juju.deploy("flog-k8s", app="flog", channel="latest/edge", trust=True)
-    # Deploy and configure Minio and S3
-    # Secret must be at least 8 characters: https://github.com/canonical/minio-operator/issues/137
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        config={"access-key": ACCESS_KEY, "secret-key": SECRET_KEY},
-        trust=True,
-    )
-    juju.deploy("s3-integrator", app="s3", channel="latest/stable", trust=True)
+    deploy_swfs(juju)
     # Deploy self-signed-certificates to provide TLS
     juju.deploy("self-signed-certificates", app="ca", channel="1/stable", trust=True)
 
-    juju.wait(lambda status: jubilant.all_active(status, "minio", "ca"), timeout=1000)
-    juju.wait(lambda status: jubilant.all_blocked(status, "s3"), timeout=1000)
-    configure_minio(juju)
-    configure_s3_integrator(juju)
+    juju.wait(lambda status: jubilant.all_active(status, "swfs", "ca"), timeout=1000)
 
     juju.wait(
-        lambda status: jubilant.all_active(status, "minio", "s3", "flog", "ca"),
+        lambda status: jubilant.all_active(status, "swfs", "flog", "ca"),
         timeout=1000,
     )
     juju.wait(lambda status: jubilant.all_blocked(status, "loki"), timeout=1000)
@@ -75,7 +61,7 @@ def test_deploy_workers(juju: Juju, cos_channel):
 @pytest.mark.setup
 def test_integrate(juju: Juju):
     """Integrate the charms, including the certificates relation."""
-    juju.integrate("loki:s3", "s3")
+    juju.integrate("loki:s3", "swfs")
     juju.integrate("loki:loki-cluster", "worker")
     juju.integrate("loki:certificates", "ca")
     juju.integrate("flog:log-proxy", "loki")
@@ -85,8 +71,7 @@ def test_integrate(juju: Juju):
             status,
             "loki",
             "flog",
-            "minio",
-            "s3",
+            "swfs",
             "worker",
             "ca",
         ),
