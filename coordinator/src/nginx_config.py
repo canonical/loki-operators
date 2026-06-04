@@ -5,12 +5,10 @@
 import logging
 from typing import Dict, List
 
-from coordinated_workers.nginx import (
-    CA_CERT_PATH,
-    CERT_PATH,
-    KEY_PATH,
+from charmlibs.nginx_k8s import (
     NginxLocationConfig,
     NginxUpstream,
+    TLSConfigManager,
 )
 from ops import Container
 
@@ -54,9 +52,9 @@ class NginxHelper:
 
     def upstreams(self) -> List[NginxUpstream]:
         """Generate the list of Nginx upstream metadata configurations."""
-        upstreams = [NginxUpstream(role, self._loki_port, role) for role in ROLES]
-        # add a generic `worker` upstream that routes to all workers
-        upstreams.append(NginxUpstream("worker", self._loki_port, "worker", ignore_worker_role=True))
+        upstreams = [NginxUpstream(role, self._loki_port, address_lookup_key=role) for role in ROLES]
+        # add a generic `worker` upstream that routes to all workers (address_lookup_key=None includes all)
+        upstreams.append(NginxUpstream("worker", self._loki_port, address_lookup_key=None))
         return upstreams
 
     def server_ports_to_locations(self) -> Dict[int, List[NginxLocationConfig]]:
@@ -69,9 +67,9 @@ class NginxHelper:
     def _tls_available(self) -> bool:
         return (
                 self._container.can_connect()
-                and self._container.exists(CERT_PATH)
-                and self._container.exists(KEY_PATH)
-                and self._container.exists(CA_CERT_PATH)
+                and self._container.exists(TLSConfigManager.CERT_PATH)
+                and self._container.exists(TLSConfigManager.KEY_PATH)
+                and self._container.exists(TLSConfigManager.CA_CERT_PATH)
             )
 
 

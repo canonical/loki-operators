@@ -32,7 +32,7 @@ assumes:
   - juju >= 3.6
 
 platforms:
-  ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 parts:
   charm:
@@ -52,7 +52,7 @@ resources:
   loki-image:
     type: oci-image
     description: OCI image for Grafana Loki
-    upstream-source: docker.io/ubuntu/loki@sha256:bef622ffc7c09e1217c25954eed22a1e52617cc1921866183d394640e1282d0b  # renovate: oci-image tag: 3.7.1-26.04
+    upstream-source: ubuntu/loki@sha256:4820c2f8aa34291ec8063a915a5539457de9da2ad5a9c0ffd4b90fe64fd8ec37  # renovate: oci-image tag: 3.7-26.04
 storage:
   loki-persisted:
     type: filesystem
