@@ -41,6 +41,7 @@ module "loki_coordinator" {
   source             = "git::https://github.com/canonical/loki-operators//coordinator/terraform?ref=track/2"
   app_name           = "loki"
   channel            = var.channel
+  config             = var.coordinator_config
   constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=loki,anti-pod.topology-key=kubernetes.io/hostname" : var.coordinator_constraints
   model_uuid         = var.model_uuid
   revision           = var.coordinator_revision
