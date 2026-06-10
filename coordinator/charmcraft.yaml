@@ -74,7 +74,7 @@ resources:
   nginx-image:
     type: oci-image
     description: OCI image for nginx
-    upstream-source: ubuntu/nginx@sha256:65265eca3b2d307096c9c50d92127890206ccbf6a42189c21ced5b10e3680f7a  # renovate: oci-image tag: 1.28-26.04_edge
+    upstream-source: ghcr.io/canonical/nginx@1.27.5
   nginx-prometheus-exporter-image:
     type: oci-image
     description: OCI image for nginx-prometheus-exporter
