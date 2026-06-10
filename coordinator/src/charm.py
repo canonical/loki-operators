@@ -11,9 +11,10 @@ https://discourse.charmhub.io/t/4208
 """
 
 import hashlib
+import json
 import logging
 import socket
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Union, cast
 from urllib.parse import urlparse
 
 import ops
@@ -32,7 +33,7 @@ from coordinated_workers.nginx import NginxConfig
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
 from cosl.interfaces.datasource_exchange import DatasourceDict
-from ops.model import ModelError
+from ops.model import ActiveStatus, BlockedStatus, ModelError, StatusBase
 from ops.pebble import Error as PebbleError
 
 from loki_config import LOKI_ROLES_CONFIG, LokiConfig
@@ -47,11 +48,25 @@ NGINX_PORT = NginxHelper._nginx_port
 NGINX_TLS_PORT = NginxHelper._nginx_tls_port
 
 
+def to_stored_status(status: StatusBase) -> List[str]:
+    """Convert a StatusBase to list, so it is marshallable into StoredState."""
+    return [status.name, status.message]
+
+
+def to_status(tpl: Sequence[str]) -> StatusBase:
+    """Convert a stored status to a StatusBase, so it could be used natively with ops."""
+    name, message = tpl
+    return StatusBase.from_name(name, message)
+
+
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
 
+    _stored = ops.StoredState()
+
     def __init__(self, *args: Any):
         super().__init__(*args)
+        self._stored.set_default(alert_rules_status=to_stored_status(ActiveStatus()))
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -134,6 +149,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             path=f"{external_url.path}/loki/api/v1/push",
         )
         self.framework.observe(self.on.logging_relation_changed, self._on_logging_relation_changed)
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.loki_provider.update_endpoint(url=self.external_url)
 
         # do this regardless of what event we are processing
@@ -316,6 +332,39 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             # Only persist the hash once lokitool has successfully synced the rules
             self._push(ALERTS_HASH_PATH, alerts_hash)
 
+        if self._has_alert_rule_errors():
+            msg = "Invalid alert rules. See debug-log"
+            logger.error(msg)
+            self._stored.alert_rules_status = to_stored_status(BlockedStatus(msg))
+        else:
+            self._stored.alert_rules_status = to_stored_status(ActiveStatus())
+
+    def _has_alert_rule_errors(self) -> bool:
+        """Check if any logging relations reported alert rule validation errors."""
+        if not self.unit.is_leader():
+            return False
+
+        for relation in self.model.relations.get("logging", []):
+            app_data = relation.data.get(self.app)
+            if not app_data:
+                continue
+
+            event_raw = app_data.get("event", "{}")
+            try:
+                event_data = json.loads(event_raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            if event_data.get("errors"):
+                logger.debug(
+                    "Alert rule validation error on relation %s: %s",
+                    relation.id,
+                    event_data["errors"],
+                )
+                return True
+
+        return False
+
     def _update_datasource_exchange(self) -> None:
         """Update the grafana-datasource-exchange relations."""
         if not self.unit.is_leader():
@@ -345,6 +394,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         established before ingress is available or when Loki scales down and back up.
         """
         self.loki_provider.update_endpoint(url=self.external_url, relation=event.relation)
+
+    def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
+        """Include alert-rule validation status in the unit status."""
+        event.add_status(to_status(self._stored.alert_rules_status))
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
