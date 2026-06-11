@@ -74,7 +74,7 @@ resources:
   nginx-image:
     type: oci-image
     description: OCI image for nginx
-    upstream-source: ghcr.io/canonical/nginx@1.27.5
+    upstream-source: ghcr.io/canonical/nginx:1.27.5
   nginx-prometheus-exporter-image:
     type: oci-image
     description: OCI image for nginx-prometheus-exporter
