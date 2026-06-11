@@ -19,6 +19,8 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 
+pytestmark = pytest.mark.skip(reason="Cross-base upgrade from 24.04 to 26.04 not supported")
+
 
 @pytest.mark.setup
 def test_deploy_from_edge(juju: Juju, cos_channel):
