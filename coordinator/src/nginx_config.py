@@ -6,9 +6,9 @@ import logging
 from typing import Dict, List
 
 from charmlibs.nginx_k8s import (
+    Nginx,
     NginxLocationConfig,
     NginxUpstream,
-    TLSConfigManager,
 )
 from ops import Container
 
@@ -67,9 +67,9 @@ class NginxHelper:
     def _tls_available(self) -> bool:
         return (
                 self._container.can_connect()
-                and self._container.exists(TLSConfigManager.CERT_PATH)
-                and self._container.exists(TLSConfigManager.KEY_PATH)
-                and self._container.exists(TLSConfigManager.CA_CERT_PATH)
+                and self._container.exists(Nginx.CERT_PATH)
+                and self._container.exists(Nginx.KEY_PATH)
+                and self._container.exists(Nginx.CA_CERT_PATH)
             )
 
 
