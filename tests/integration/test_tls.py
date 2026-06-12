@@ -75,6 +75,8 @@ def test_integrate(juju: Juju):
             "worker",
             "ca",
         ),
+        delay=3.0,
+        successes=10,
         timeout=1000,
     )
 
@@ -89,11 +91,15 @@ def test_worker_has_tls_config(juju: Juju):
     # Verify server section has TLS config
     assert "server" in config, "Server section missing from worker config"
     server_config = config["server"]
-    assert "http_tls_config" in server_config, "http_tls_config missing from server config"
-    assert (
-        "cert_file" in server_config["http_tls_config"]
-    ), "cert_file missing from http_tls_config"
-    assert "key_file" in server_config["http_tls_config"], "key_file missing from http_tls_config"
+    assert "http_tls_config" in server_config, (
+        "http_tls_config missing from server config"
+    )
+    assert "cert_file" in server_config["http_tls_config"], (
+        "cert_file missing from http_tls_config"
+    )
+    assert "key_file" in server_config["http_tls_config"], (
+        "key_file missing from http_tls_config"
+    )
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
