@@ -36,10 +36,14 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
     # Deploy self-signed-certificates to provide TLS
     juju.deploy("self-signed-certificates", app="ca", channel="1/stable", trust=True)
 
-    juju.wait(lambda status: jubilant.all_active(status, "swfs", "ca"), timeout=1000)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, "swfs", "ca"),
+        timeout=1000,
+    )
 
     juju.wait(
-        lambda status: jubilant.all_active(status, "swfs", "flog", "ca"),
+        lambda status: jubilant.all_agents_idle(status)
+        and jubilant.all_active(status, "swfs", "flog", "ca"),
         timeout=1000,
     )
     juju.wait(lambda status: jubilant.all_blocked(status, "loki"), timeout=1000)
@@ -67,7 +71,8 @@ def test_integrate(juju: Juju):
     juju.integrate("flog:log-proxy", "loki")
 
     juju.wait(
-        lambda status: jubilant.all_active(
+        lambda status: jubilant.all_agents_idle(status)
+        and jubilant.all_active(
             status,
             "loki",
             "flog",
