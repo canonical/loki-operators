@@ -36,10 +36,14 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel):
     # Deploy self-signed-certificates to provide TLS
     juju.deploy("self-signed-certificates", app="ca", channel="1/stable", trust=True)
 
-    juju.wait(lambda status: jubilant.all_active(status, "swfs", "ca"), timeout=1000)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, "swfs", "ca"),
+        timeout=1000,
+    )
 
     juju.wait(
-        lambda status: jubilant.all_active(status, "swfs", "flog", "ca"),
+        lambda status: jubilant.all_agents_idle(status)
+        and jubilant.all_active(status, "swfs", "flog", "ca"),
         timeout=1000,
     )
     juju.wait(lambda status: jubilant.all_blocked(status, "loki"), timeout=1000)
@@ -67,7 +71,8 @@ def test_integrate(juju: Juju):
     juju.integrate("flog:log-proxy", "loki")
 
     juju.wait(
-        lambda status: jubilant.all_active(
+        lambda status: jubilant.all_agents_idle(status)
+        and jubilant.all_active(
             status,
             "loki",
             "flog",
@@ -75,6 +80,8 @@ def test_integrate(juju: Juju):
             "worker",
             "ca",
         ),
+        delay=3.0,
+        successes=10,
         timeout=1000,
     )
 
@@ -89,11 +96,15 @@ def test_worker_has_tls_config(juju: Juju):
     # Verify server section has TLS config
     assert "server" in config, "Server section missing from worker config"
     server_config = config["server"]
-    assert "http_tls_config" in server_config, "http_tls_config missing from server config"
-    assert (
-        "cert_file" in server_config["http_tls_config"]
-    ), "cert_file missing from http_tls_config"
-    assert "key_file" in server_config["http_tls_config"], "key_file missing from http_tls_config"
+    assert "http_tls_config" in server_config, (
+        "http_tls_config missing from server config"
+    )
+    assert "cert_file" in server_config["http_tls_config"], (
+        "cert_file missing from http_tls_config"
+    )
+    assert "key_file" in server_config["http_tls_config"], (
+        "key_file missing from http_tls_config"
+    )
 
 
 @retry(wait=wait_fixed(10), stop=stop_after_attempt(6))

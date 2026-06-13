@@ -32,7 +32,10 @@ def test_build_and_deploy(juju: Juju, coordinator_charm, cos_channel, mesh_chann
     juju.deploy("loki-k8s", app="loki-mono", channel=cos_channel, trust=True)
     juju.deploy("grafana-k8s", app="grafana", channel=cos_channel, trust=True)
     juju.deploy("flog-k8s", app="flog", channel="latest/stable", trust=True)
-    juju.deploy("istio-k8s", app="istio", channel=mesh_channel, trust=True)
+    # microk8s does not need platform config, but other clouds need an explicit empty value
+    model_info = juju.show_model()
+    istio_config = {} if model_info.cloud == "microk8s" else {"platform": ""}
+    juju.deploy("istio-k8s", app="istio", channel=mesh_channel, config=istio_config, trust=True)
     juju.deploy("istio-beacon-k8s", app="istio-beacon", channel=mesh_channel, trust=True)
     juju.deploy("istio-ingress-k8s", app="istio-ingress", channel=mesh_channel, trust=True)
     deploy_swfs(juju)

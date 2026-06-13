@@ -4,7 +4,7 @@
 from unittest.mock import patch
 
 import scenario
-from coordinated_workers.nginx import Nginx
+from charmlibs.nginx_k8s import Nginx
 from helpers import get_relation_data
 from scenario import Relation, State
 
@@ -46,7 +46,7 @@ def test_ingress_tls(
         assert get_relation_data(state_out.relations, "ingress", "port") == str(NGINX_PORT)
 
     # AND WHEN TLS is enabled
-    with patch.object(Nginx, "are_certificates_on_disk", return_value=True):
+    with patch.object(Nginx, "are_certificates_on_disk", new=True):
         # AND the ingress databag is updated
         state_out = context.run(context.on.relation_changed(ingress), state_in)
 
