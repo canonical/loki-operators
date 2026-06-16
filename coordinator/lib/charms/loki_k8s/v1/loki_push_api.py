@@ -544,7 +544,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 26
+LIBPATCH = 28
 
 PYDEPS = ["cosl"]
 
@@ -1203,6 +1203,8 @@ class LokiPushApiProvider(Object):
                 event_data.pop("errors", None)
                 relation.data[self._charm.app]["event"] = json.dumps(event_data)
 
+            alerts[identifier] = alert_rules
+
         return alerts
 
     def _get_identifier_by_alert_rules(
@@ -1702,7 +1704,7 @@ class LogProxyConsumer(ConsumerBase):
         self._promtails_ports = self._generate_promtails_ports(logs_scheme)
 
         # architecture used for promtail binary
-        arch = platform.processor()
+        arch = platform.machine()
         if arch in ["x86_64", "amd64"]:
             self._arch = "amd64"
         elif arch in ["aarch64", "arm64", "armv8b", "armv8l"]:
