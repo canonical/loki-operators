@@ -335,7 +335,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 continue
 
             if event_data.get("errors"):
-                logger.debug(
+                logger.error(
                     "Alert rule validation error on relation %s: %s",
                     relation.id,
                     event_data["errors"],
@@ -378,9 +378,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         """Include alert-rule validation status in the unit status."""
         event.add_status(ActiveStatus())
         if self._has_alert_rule_errors():
-            msg = "Invalid alert rules. See debug-log"
-            logger.error(msg)
-            event.add_status(BlockedStatus(msg))
+            event.add_status(BlockedStatus("Invalid alert rules. See debug-log"))
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
