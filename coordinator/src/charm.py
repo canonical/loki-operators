@@ -66,7 +66,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def __init__(self, *args: Any):
         super().__init__(*args)
-        self._stored.set_default(alert_rules_status=to_stored_status(ActiveStatus()))
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -332,13 +331,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             # Only persist the hash once lokitool has successfully synced the rules
             self._push(ALERTS_HASH_PATH, alerts_hash)
 
-        if self._has_alert_rule_errors():
-            msg = "Invalid alert rules. See debug-log"
-            logger.error(msg)
-            self._stored.alert_rules_status = to_stored_status(BlockedStatus(msg))
-        else:
-            self._stored.alert_rules_status = to_stored_status(ActiveStatus())
-
     def _has_alert_rule_errors(self) -> bool:
         """Check if any logging relations reported alert rule validation errors."""
         if not self.unit.is_leader():
@@ -397,7 +389,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Include alert-rule validation status in the unit status."""
-        event.add_status(to_status(self._stored.alert_rules_status))
+        event.add_status(ActiveStatus())
+        if self._has_alert_rule_errors():
+            msg = "Invalid alert rules. See debug-log"
+            logger.error(msg)
+            event.add_status(BlockedStatus(msg))
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
