@@ -14,7 +14,7 @@ import hashlib
 import json
 import logging
 import socket
-from typing import Any, Dict, List, Optional, Sequence, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 import ops
@@ -33,7 +33,7 @@ from coordinated_workers.nginx import NginxConfig
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
 from cosl.interfaces.datasource_exchange import DatasourceDict
-from ops.model import ActiveStatus, BlockedStatus, ModelError, StatusBase
+from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
 
 from loki_config import LOKI_ROLES_CONFIG, LokiConfig
@@ -48,21 +48,8 @@ NGINX_PORT = NginxHelper._nginx_port
 NGINX_TLS_PORT = NginxHelper._nginx_tls_port
 
 
-def to_stored_status(status: StatusBase) -> List[str]:
-    """Convert a StatusBase to list, so it is marshallable into StoredState."""
-    return [status.name, status.message]
-
-
-def to_status(tpl: Sequence[str]) -> StatusBase:
-    """Convert a stored status to a StatusBase, so it could be used natively with ops."""
-    name, message = tpl
-    return StatusBase.from_name(name, message)
-
-
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
-
-    _stored = ops.StoredState()
 
     def __init__(self, *args: Any):
         super().__init__(*args)
