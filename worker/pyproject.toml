@@ -3,10 +3,10 @@
 [project]
 name = "loki-worker-k8s"
 version = "0.0"
-requires-python = "~=3.10"
+requires-python = "~=3.14.0"
 
 dependencies = [
-  "coordinated-workers",
+  "coordinated-workers>=4",
   "charmed-service-mesh-helpers>=0.2.0",
   "lightkube-extensions",
 ]

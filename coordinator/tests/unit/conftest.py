@@ -46,6 +46,7 @@ def nginx_container():
             Exec(["lokitool", "rules", "sync", address_arg, "--id=fake"], return_code=0),
             Exec(["lokitool", "rules", "sync", address_arg_tls, "--id=fake"], return_code=0),
             Exec(["update-ca-certificates", "--fresh"], return_code=0),
+            Exec(["nginx", "-s", "reload"], return_code=0),
         },
     )
 

@@ -8,7 +8,7 @@ from coordinated_workers.coordinator import Coordinator
 from helpers import get_worker_config
 from scenario import Container, Exec, Relation, State
 
-from src.loki_config import (
+from loki_config import (
     LOKI_ROLES_CONFIG,
     MINIMAL_DEPLOYMENT,
 )
@@ -149,6 +149,7 @@ def test_logging_endpoint_uses_external_url_with_ingress(
                 return_code=0,
             ),
             Exec(["update-ca-certificates", "--fresh"], return_code=0),
+            Exec(["nginx", "-s", "reload"], return_code=0),
         },
     )
 
