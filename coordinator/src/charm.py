@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 import ops
 import yaml
+from charmlibs.nginx_k8s import NginxConfig
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
@@ -29,7 +30,6 @@ from charms.istio_beacon_k8s.v0.service_mesh import (
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
-from coordinated_workers.nginx import NginxConfig
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
 from cosl.interfaces.datasource_exchange import DatasourceDict
