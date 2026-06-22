@@ -9,6 +9,21 @@ def get_relation_data(relations, endpoint, key):
     assert len(relevant) < 2, "This helper currently assumes only one relation."
     return relevant[0] if relevant else None
 
+def _written_group_names(context, state_out) -> set:
+    """Return alert group names found in rendered Loki rule files."""
+    fs = state_out.get_container("nginx").get_filesystem(context)
+    rules_dir = fs.joinpath("etc", "loki-alerts", "rules")
+    if not rules_dir.exists():
+        return set()
+
+    written_group_names = set()
+    for rule_file in sorted(p for p in rules_dir.iterdir() if p.is_file()):
+        written_rules = yaml.safe_load(rule_file.read_text())
+        for group in written_rules["groups"]:
+            written_group_names.add(group["name"])
+    return written_group_names
+
+
 def get_worker_config(relations, endpoint, block_key):
     relevant = [r.local_app_data for r in relations if r.endpoint == endpoint]
 
