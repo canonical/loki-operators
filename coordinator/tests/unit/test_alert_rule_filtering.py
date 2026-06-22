@@ -104,6 +104,7 @@ def _nginx_container_with_lokitool_sync(*rule_paths: str) -> Container:
                 return_code=0,
             ),
             Exec(["update-ca-certificates", "--fresh"], return_code=0),
+            Exec(["nginx", "-s", "reload"], return_code=0),
         },
     )
 
