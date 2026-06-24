@@ -208,13 +208,11 @@ config:
         This same value is used internally for setting `per_stream_rate_limit`. Loki uses a default of 3 for
         `ingestion_rate_mb`, but 4 for `per_stream_rate_limit`. For this reason we use 4 as the default here.
 
-        IMPORTANT: this is NOT the rate enforced by each distributor. Loki uses the `global` ingestion
-        rate strategy, under which this limit is shared evenly across distributor (write) replicas. The
-        effective per-distributor limit is `ingestion-rate-mb / N`, where N is the number of distributor
-        replicas (Loki adjusts this automatically as replicas scale). For example, with the default `4`
-        and 3 write workers, each distributor allows only ~1.33 MB/s before returning
-        `HTTP 429 "Ingestion rate limit exceeded"`. When tuning, multiply your desired per-distributor
-        rate by the number of distributor replicas.
+        IMPORTANT: this is NOT the rate enforced by each distributor. The limit is shared evenly across
+        distributor (write) replicas, so the effective per-distributor limit is `ingestion-rate-mb / N`,
+        where N is the number of distributor replicas. If you are hitting
+        `HTTP 429 "Ingestion rate limit exceeded"` errors, raise this value (multiply your desired
+        per-distributor rate by the number of replicas).
 
         Ref: https://grafana.com/docs/loki/latest/configure/#limits_config
       type: int
