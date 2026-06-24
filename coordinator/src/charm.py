@@ -28,7 +28,7 @@ from charms.istio_beacon_k8s.v0.service_mesh import (
     UnitPolicy,
 )
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
-from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
+from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
@@ -136,10 +136,27 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         )
         self.framework.observe(self.on.logging_relation_changed, self._on_logging_relation_changed)
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
+        self.framework.observe(self.ingress.on.ready, self._on_ingress_ready)
+        self.framework.observe(self.ingress.on.revoked, self._on_ingress_revoked)
         self.loki_provider.update_endpoint(url=self.external_url)
 
         # do this regardless of what event we are processing
         self._reconcile()
+
+    def _on_ingress_ready(self, event: IngressPerAppReadyEvent):
+        """Log the obtained ingress address.
+
+        This event refreshes the PrometheusRemoteWriteProvider address.
+        """
+        logger.info("Ingress for app ready on '%s'", event.url)
+        if self.coordinator.can_handle_events:
+            self._reconcile()
+
+    def _on_ingress_revoked(self, _) -> None:
+        """Ingress address revoked: reconcile all downstream relation URLs."""
+        logger.info("Ingress for app revoked")
+        if self.coordinator.can_handle_events:
+            self._reconcile()
 
     ######################
     # === PROPERTIES === #
@@ -390,7 +407,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.grafana_source.update_source(
             source_url=self.external_url
         )
-
+        self.loki_provider.update_endpoint(url=self.external_url)
         # Open necessary service ports
         nginx_port = NGINX_TLS_PORT if self.coordinator.tls_available else NGINX_PORT
         self.unit.set_ports(nginx_port)
