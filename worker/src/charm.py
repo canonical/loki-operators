@@ -84,6 +84,13 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
                 "no_proxy": os.environ.get("JUJU_CHARM_NO_PROXY", ""),
             }
         )
+        if "backend" in worker.roles:
+            env.update(
+                {
+                    "AWS_REQUEST_CHECKSUM_CALCULATION": "when_required",
+                    "AWS_REQUEST_CHECKSUM_VALIDATION": "when_required",
+                }
+            )
         # configure workload traces
         if tempo_endpoint := worker.cluster.get_workload_tracing_receivers().get(
             "jaeger_thrift_http", None
