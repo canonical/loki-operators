@@ -84,6 +84,8 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
                 "no_proxy": os.environ.get("JUJU_CHARM_NO_PROXY", ""),
             }
         )
+
+        # Undo this block when https://github.com/canonical/loki-operators/issues/127 is resolved.
         if "backend" in worker.roles:
             env.update(
                 {
@@ -91,6 +93,8 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
                     "AWS_REQUEST_CHECKSUM_VALIDATION": "when_required",
                 }
             )
+        # End of block to undo when
+
         # configure workload traces
         if tempo_endpoint := worker.cluster.get_workload_tracing_receivers().get(
             "jaeger_thrift_http", None
