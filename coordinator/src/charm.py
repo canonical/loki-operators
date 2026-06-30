@@ -22,7 +22,7 @@ import yaml
 from charmlibs.nginx_k8s import NginxConfig
 from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
-from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
+from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.istio_beacon_k8s.v0.service_mesh import (
     AppPolicy,
     UnitPolicy,
@@ -118,10 +118,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.grafana_source = GrafanaSourceProvider(
             self,
             source_type="loki",
-            source_url=self.external_url,
             extra_fields=self._build_grafana_source_extra_fields(),
             secure_extra_fields={"httpHeaderValue1": "anonymous"},
-            is_ingress_per_app=self.ingress.is_ready(),
+            app_datasource_url=self.ingress.url or self._service_url,
         )
 
         external_url = urlparse(self.external_url)
@@ -186,6 +185,18 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         except ModelError as e:
             logger.error("Failed obtaining external url: %s.", e)
         return self.internal_url
+
+    @property
+    def _service_url(self) -> str:
+        """Return the K8s service URL (without unit prefix) for app-level datasources."""
+        scheme, port = (
+            ("https", NGINX_TLS_PORT)
+            if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk
+            else ("http", NGINX_PORT)
+        )
+        # hostname is e.g. "loki-0.loki-coordinator-endpoints..."; strip unit prefix for service URL
+        service_hostname = self.hostname.split(".", 1)[-1]
+        return f"{scheme}://{service_hostname}:{port}"
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
@@ -404,8 +415,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             self._set_alerts()
 
         self._update_datasource_exchange()
-        self.grafana_source.update_source(
-            source_url=self.external_url
+        self.grafana_source.update_app_source(
+            app_datasource_url=self.ingress.url or self._service_url
         )
         self.loki_provider.update_endpoint(url=self.external_url)
         # Open necessary service ports

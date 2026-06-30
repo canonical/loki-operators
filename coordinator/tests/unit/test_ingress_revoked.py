@@ -17,6 +17,7 @@ LOKI_INGRESS_URL = "http://ingress.test/loki"
 LOKI_INGRESS_URL_HTTPS = "https://ingress.test/loki"
 
 
+@patch("charm.LokiCoordinatorK8SOperatorCharm._service_url", PropertyMock(return_value=LOKI_URL))
 @patch("charm.LokiCoordinatorK8SOperatorCharm.internal_url", PropertyMock(return_value=LOKI_URL))
 @patch("charm.LokiCoordinatorK8SOperatorCharm._set_alerts", MagicMock())
 def test_logging_endpoint_uses_internal_url_after_ingress_revoked(
@@ -47,7 +48,7 @@ def test_logging_endpoint_uses_internal_url_after_ingress_revoked(
     assert LOKI_INGRESS_URL.rstrip("/") in endpoint_after_ready
 
     # AND grafana-source URL contains the ingress URL
-    gs_url_after_ready = state.get_relation(grafana_source.id).local_unit_data["grafana_source_host"]
+    gs_url_after_ready = state.get_relation(grafana_source.id).local_app_data["grafana_source_app_host"]
     assert LOKI_INGRESS_URL.rstrip("/") in gs_url_after_ready
 
     # WHEN ingress is revoked
@@ -63,11 +64,12 @@ def test_logging_endpoint_uses_internal_url_after_ingress_revoked(
     assert LOKI_INGRESS_URL.rstrip("/") not in endpoint_after_revoked
 
     # AND grafana-source URL falls back to the internal URL
-    gs_url_after_revoked = state.get_relation(grafana_source.id).local_unit_data["grafana_source_host"]
+    gs_url_after_revoked = state.get_relation(grafana_source.id).local_app_data["grafana_source_app_host"]
     assert LOKI_URL.rstrip("/") in gs_url_after_revoked
     assert LOKI_INGRESS_URL.rstrip("/") not in gs_url_after_revoked
 
 
+@patch("charm.LokiCoordinatorK8SOperatorCharm._service_url", PropertyMock(return_value=LOKI_URL))
 @patch("charm.LokiCoordinatorK8SOperatorCharm.internal_url", PropertyMock(return_value=LOKI_URL))
 @patch("charm.LokiCoordinatorK8SOperatorCharm._set_alerts", MagicMock())
 def test_related_charms_updated_when_traefik_switches_ingress_url_to_https(
@@ -99,7 +101,7 @@ def test_related_charms_updated_when_traefik_switches_ingress_url_to_https(
     assert LOKI_INGRESS_URL.rstrip("/") in endpoint_before
 
     # AND grafana-source URL contains the http ingress URL
-    gs_url_before = state.get_relation(grafana_source.id).local_unit_data["grafana_source_host"]
+    gs_url_before = state.get_relation(grafana_source.id).local_app_data["grafana_source_app_host"]
     assert LOKI_INGRESS_URL.rstrip("/") in gs_url_before
 
     # WHEN Traefik updates the ingress relation data to provide an https URL
@@ -125,7 +127,7 @@ def test_related_charms_updated_when_traefik_switches_ingress_url_to_https(
     assert LOKI_INGRESS_URL_HTTPS.rstrip("/") in endpoint_after
 
     # AND grafana-source URL is updated to the https ingress URL
-    gs_url_after = state.get_relation(grafana_source.id).local_unit_data["grafana_source_host"]
+    gs_url_after = state.get_relation(grafana_source.id).local_app_data["grafana_source_app_host"]
     assert LOKI_INGRESS_URL_HTTPS.rstrip("/") in gs_url_after, (
         f"Expected https ingress URL in grafana-source but got: {gs_url_after}"
     )
