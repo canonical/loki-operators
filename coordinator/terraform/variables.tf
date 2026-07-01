@@ -6,13 +6,8 @@ variable "app_name" {
 
 variable "base" {
   description = "The operating system on which to deploy. E.g. ubuntu@26.04. Check Charmhub for per-charm base support."
-<<<<<<< HEAD
-  type        = string
-  default     = "ubuntu@26.04"
-=======
   default     = "ubuntu@26.04"
   type        = string
->>>>>>> 5c69289 (feat(tf): base input variable (#140))
 }
 
 variable "channel" {
