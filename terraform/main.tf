@@ -1,6 +1,7 @@
 module "loki_coordinator" {
   source             = "../coordinator/terraform"
   app_name           = "loki"
+  base               = var.base
   channel            = var.channel
   config             = var.coordinator_config
   constraints        = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=loki,anti-pod.topology-key=kubernetes.io/hostname" : var.coordinator_constraints
@@ -16,6 +17,7 @@ module "loki_backend" {
   depends_on = [module.loki_coordinator]
 
   app_name    = var.backend_name
+  base        = var.base
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.backend_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
   config = merge({
@@ -33,6 +35,7 @@ module "loki_read" {
   depends_on = [module.loki_coordinator]
 
   app_name    = var.read_name
+  base        = var.base
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.read_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
   config = merge({
@@ -50,6 +53,7 @@ module "loki_write" {
   depends_on = [module.loki_coordinator]
 
   app_name    = var.write_name
+  base        = var.base
   channel     = var.channel
   constraints = var.anti_affinity ? "arch=amd64 tags=anti-pod.app.kubernetes.io/name=${var.write_name},anti-pod.topology-key=kubernetes.io/hostname" : var.worker_constraints
   config = merge({
