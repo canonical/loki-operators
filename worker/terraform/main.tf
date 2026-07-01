@@ -9,6 +9,7 @@ resource "juju_application" "loki_worker" {
   units              = var.units
 
   charm {
+    base     = var.base
     name     = "loki-worker-k8s"
     channel  = var.channel
     revision = var.revision
