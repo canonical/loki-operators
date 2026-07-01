@@ -20,12 +20,6 @@ This is a Terraform module facilitating the deployment of loki-coordinator-k8s c
 
 No modules.
 
-## Resources
-
-| Name | Type |
-|------|------|
-| [juju_application.loki_coordinator](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
-
 ## Inputs
 
 | Name | Description | Type | Default | Required |
