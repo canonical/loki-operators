@@ -197,7 +197,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # We use the ClusterIP service, not the headless service to avoid https://github.com/canonical/loki-operators/issues/228.
         service_hostname = self.coordinator.app_hostname(
             self.hostname, self.app.name, self.model.name
-    )
+        )
         return f"{scheme}://{service_hostname}:{port}"
 
     @property
