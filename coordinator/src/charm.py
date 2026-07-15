@@ -194,8 +194,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk
             else ("http", NGINX_PORT)
         )
-        # hostname is e.g. "loki-0.loki-coordinator-endpoints..."; strip unit prefix for service URL
-        service_hostname = self.hostname.split(".", 1)[-1]
+        # We use the ClusterIP service, not the headless service to avoid https://github.com/canonical/loki-operators/issues/228.
+        service_hostname = self.coordinator.app_hostname(
+            self.hostname, self.app.name, self.model.name
+    )
         return f"{scheme}://{service_hostname}:{port}"
 
     @property
