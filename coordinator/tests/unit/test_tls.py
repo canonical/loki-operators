@@ -53,3 +53,45 @@ def test_ingress_tls(
         # THEN Loki publishes its Nginx TLS port in the ingress databag
         assert get_relation_data(state_out.relations, "ingress", "scheme") == '"https"'
         assert get_relation_data(state_out.relations, "ingress", "port") == str(NGINX_TLS_PORT)
+
+
+def test_ingress_scheme_switches_to_http_when_certificates_relation_removed(
+    context,
+    s3,
+    all_worker,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+):
+    ingress = Relation("ingress")
+    certificates = Relation("certificates")
+
+    state = State(
+        relations=[
+            s3,
+            all_worker,
+            ingress,
+            certificates,
+        ],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # GIVEN TLS is available
+    with patch.object(Nginx, "are_certificates_on_disk", new=True):
+        state = context.run(context.on.relation_joined(ingress), state)
+
+        # THEN ingress databag shows https scheme and TLS port
+        assert get_relation_data(state.relations, "ingress", "scheme") == '"https"'
+        assert get_relation_data(state.relations, "ingress", "port") == str(NGINX_TLS_PORT)
+
+    # WHEN the certificates relation is removed
+    state = context.run(
+        context.on.relation_broken(state.get_relation(certificates.id)),
+        state,
+    )
+
+    # THEN the ingress databag is updated to the non-TLS port
+    assert get_relation_data(state.relations, "ingress", "port") == str(NGINX_PORT)
+    # AND scheme is either "http" or absent (defaults to "http" when excluded from dump)
+    scheme = get_relation_data(state.relations, "ingress", "scheme")
+    assert scheme is None or scheme == '"http"', f"Expected http or absent, got {scheme}"
