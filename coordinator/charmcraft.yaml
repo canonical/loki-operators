@@ -83,7 +83,7 @@ resources:
   nginx-prometheus-exporter-image:
     type: oci-image
     description: OCI image for nginx-prometheus-exporter
-    upstream-source: ubuntu/nginx-prometheus-exporter@sha256:a92f9eec1b7bb7e8e5ebf7c0681faa48994a80a53f3d717ed8f600254b499015  # renovate: oci-image tag: 1.5-26.04
+    upstream-source: ubuntu/nginx-prometheus-exporter@sha256:9c5689054950bbf1b0670a4638265e42f2039503c66dc3f801bd2f0aba8bbfb7  # renovate: oci-image tag: 1.5-26.04
 
 peers:
   loki-peers:
