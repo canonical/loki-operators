@@ -1,4 +1,3 @@
-# FIXME: revert once done testing
 output "app_name" {
   value = juju_application.loki_coordinator.name
 }
