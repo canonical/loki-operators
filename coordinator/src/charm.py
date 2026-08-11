@@ -11,7 +11,6 @@ https://discourse.charmhub.io/t/4208
 """
 
 import hashlib
-import json
 import logging
 import socket
 from typing import Any, Dict, List, Optional, Union, cast
@@ -348,32 +347,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             # Only persist the hash once lokitool has successfully synced the rules
             self._push(ALERTS_HASH_PATH, alerts_hash)
 
-    def _has_alert_rule_errors(self) -> bool:
-        """Check if any logging relations reported alert rule validation errors."""
-        if not self.unit.is_leader():
-            return False
-
-        for relation in self.model.relations.get("logging", []):
-            app_data = relation.data.get(self.app)
-            if not app_data:
-                continue
-
-            event_raw = app_data.get("event", "{}")
-            try:
-                event_data = json.loads(event_raw)
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-            if event_data.get("errors"):
-                logger.error(
-                    "Alert rule validation error on relation %s: %s",
-                    relation.id,
-                    event_data["errors"],
-                )
-                return True
-
-        return False
-
     def _update_datasource_exchange(self) -> None:
         """Update the grafana-datasource-exchange relations."""
         if not self.unit.is_leader():
@@ -407,7 +380,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Include alert-rule validation status in the unit status."""
         event.add_status(ActiveStatus())
-        if self._has_alert_rule_errors():
+        if self.loki_provider.has_invalid_alert_rules():
             event.add_status(BlockedStatus("Invalid alert rules. See debug-log"))
 
     def _reconcile(self):
