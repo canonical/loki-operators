@@ -86,7 +86,7 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
         )
 
         # Undo this block when https://github.com/canonical/loki-operators/issues/127 is resolved.
-        if "backend" in worker.roles:
+        if "backend" in worker.roles or "write" in worker.roles:
             env.update(
                 {
                     "AWS_REQUEST_CHECKSUM_CALCULATION": "when_required",
