@@ -82,7 +82,7 @@ def test_ingress_scheme_switches_to_http_when_certificates_relation_removed(
 
         # THEN ingress databag shows https scheme and TLS port
         assert get_relation_data(state.relations, "ingress", "scheme") == '"https"'
-        assert get_relation_data(state.relations, "ingress", "port") == str(NGINX_TLS_PORT)
+        assert get_relation_data(state.relations, "ingress", "port") == str(NGINX_PORT)
 
     # WHEN the certificates relation is removed
     state = context.run(
