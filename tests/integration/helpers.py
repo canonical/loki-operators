@@ -134,7 +134,7 @@ def query_loki_series_from_client_localhost(
 ) -> Dict[str, Any]:
     """Query Loki series API from the test host machine (outside the cluster)."""
     loki_url = get_unit_address(juju, coordinator_app, 0)
-    response = requests.get(f"http://{loki_url}:8080/loki/api/v1/series")
+    response = requests.get(f"http://{loki_url}:3100/loki/api/v1/series")
     assert response.status_code == 200
     response_json = response.json()
 
@@ -149,7 +149,7 @@ def query_loki_series_from_client_pod(
 ) -> Dict[str, Any]:
     """Query Loki series API from inside a pod (within the cluster)."""
     loki_url = f"{coordinator_app}.{juju.model}.svc.cluster.local"
-    url = f"http://{loki_url}:8080/loki/api/v1/series"
+    url = f"http://{loki_url}:3100/loki/api/v1/series"
 
     task = juju.exec(f"curl -s {url}", unit=source_pod)
     response_json = json.loads(task.stdout)

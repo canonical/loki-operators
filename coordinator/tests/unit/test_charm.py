@@ -8,6 +8,7 @@ from coordinated_workers.coordinator import Coordinator
 from helpers import get_worker_config
 from scenario import Container, Exec, Relation, State
 
+from charm import NGINX_PORT
 from loki_config import (
     LOKI_ROLES_CONFIG,
     MINIMAL_DEPLOYMENT,
@@ -120,7 +121,7 @@ def test_logging_endpoint_uses_internal_url_without_ingress(
     # THEN the endpoint published in the logging relation data uses the internal URL
     logging_out = state_out.get_relation(logging_rel.id)
     endpoint = json.loads(logging_out.local_unit_data["endpoint"])
-    expected_url = f"http://{socket.getfqdn()}:8080/loki/api/v1/push"
+    expected_url = f"http://{socket.getfqdn()}:{NGINX_PORT}/loki/api/v1/push"
     assert endpoint["url"] == expected_url
 
 

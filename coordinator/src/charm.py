@@ -43,8 +43,7 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = "/etc/loki-alerts/rules"
 ALERTS_HASH_PATH = "/etc/loki-alerts/alerts.sha256"
-NGINX_PORT = NginxHelper._nginx_port
-NGINX_TLS_PORT = NginxHelper._nginx_tls_port
+NGINX_PORT = NginxHelper.port
 
 
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
@@ -105,6 +104,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             peer_relation="loki-peers",
         )
 
+        # The nginx-prometheus-exporter must scrape nginx on the single API port
+        # regardless of TLS state.
+        self.coordinator.nginx_exporter._nginx_port = NGINX_PORT
+        self.coordinator.nginx_exporter._nginx_tls_port = NGINX_PORT
+
         # needs to be after the Coordinator definition in order to push certificates before checking
         # if they exist
         if port := urlparse(self.internal_url).port:
@@ -126,9 +130,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.loki_provider = LokiPushApiProvider(
             self,
             address=external_url.hostname or self.hostname,
-            port=external_url.port or NGINX_TLS_PORT
-            if self.coordinator.tls_available
-            else NGINX_PORT,
+            port=external_url.port or NGINX_PORT,
             scheme=external_url.scheme,
             path=f"{external_url.path}/loki/api/v1/push",
         )
@@ -168,12 +170,10 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     @property
     def internal_url(self) -> str:
         """Returns workload's FQDN. Used for ingress."""
-        scheme, port = (
-            ("https", NGINX_TLS_PORT)
-            if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk
-            else ("http", NGINX_PORT)
-        )
-        return f"{scheme}://{self.hostname}:{port}"
+        scheme = "http"
+        if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk:
+            scheme = "https"
+        return f"{scheme}://{self.hostname}:{NGINX_PORT}"
 
     @property
     def external_url(self) -> str:
@@ -188,16 +188,14 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     @property
     def _service_url(self) -> str:
         """Return the K8s service URL (without unit prefix) for app-level datasources."""
-        scheme, port = (
-            ("https", NGINX_TLS_PORT)
-            if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk
-            else ("http", NGINX_PORT)
-        )
+        scheme = "http"
+        if hasattr(self, "coordinator") and self.coordinator.nginx.are_certificates_on_disk:
+            scheme = "https"
         # We use the ClusterIP service, not the headless service to avoid https://github.com/canonical/loki-operators/issues/228.
         service_hostname = self.coordinator.app_hostname(
             self.hostname, self.app.name, self.model.name
         )
-        return f"{scheme}://{service_hostname}:{port}"
+        return f"{scheme}://{service_hostname}:{NGINX_PORT}"
 
     @property
     def _catalogue_item(self) -> CatalogueItem:
@@ -227,17 +225,17 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _charm_mesh_policies(self) -> List[Union[AppPolicy, UnitPolicy]]:
         """Return the mesh policies specific to Loki."""
         return [
-            # Allow access to loki logging API ports for charms related over the logging relation.
+            # Allow access to loki logging API port for charms related over the logging relation.
             # This is a unit policy as loki's unit address is published for receving logs. Incase of ingress url, this is handled by the service_mesh ingress.
             UnitPolicy(
                 relation="logging",
-                ports=[NGINX_PORT, NGINX_TLS_PORT],
+                ports=[NGINX_PORT],
             ),
-            # Allow access to loki logging API ports for charms related over the grafana_source relation.
+            # Allow access to loki logging API port for charms related over the grafana_source relation.
             # This is a unit policy as loki's unit address is published. Incase of ingress url, this is handled by the service_mesh ingress.
             UnitPolicy(
                 relation="grafana-source",
-                ports=[NGINX_PORT, NGINX_TLS_PORT],
+                ports=[NGINX_PORT],
             )
 
         ]
@@ -247,7 +245,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         """Get the http and https ports for proxying worker telemetry."""
         return WorkerTelemetryProxyConfig(
             http_port=NGINX_PORT,
-            https_port=NGINX_TLS_PORT,
+            https_port=NGINX_PORT,
         )
 
     ###########################
@@ -394,9 +392,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             app_datasource_url=self.ingress.url or self._service_url
         )
         self.loki_provider.update_endpoint(url=self.external_url)
-        # Open necessary service ports
-        nginx_port = NGINX_TLS_PORT if self.coordinator.tls_available else NGINX_PORT
-        self.unit.set_ports(nginx_port)
+        # Open necessary service ports. needed for telemetry proxying.
+        self.unit.set_ports(NGINX_PORT)
 
     def _build_grafana_source_extra_fields(self) -> Dict[str, Any]:
         """Extra fields needed for the grafana-source relation, like data correlation config."""
