@@ -392,7 +392,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             app_datasource_url=self.ingress.url or self._service_url
         )
         self.loki_provider.update_endpoint(url=self.external_url)
-        # Open necessary service ports. needed for telemetry proxying.
+        # Open necessary service ports. Needed for telemetry proxying.
         self.unit.set_ports(NGINX_PORT)
 
     def _build_grafana_source_extra_fields(self) -> Dict[str, Any]:
