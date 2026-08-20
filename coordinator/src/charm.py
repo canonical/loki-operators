@@ -233,13 +233,13 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _charm_mesh_policies(self) -> List[Union[AppPolicy, UnitPolicy]]:
         """Return the mesh policies specific to Loki."""
         return [
-            # Allow access to loki logging API port for charms related over the logging relation.
+            # Allow access to the Loki logging API port for charms related over the logging relation.
             # This is a unit policy as loki's unit address is published for receving logs. Incase of ingress url, this is handled by the service_mesh ingress.
             UnitPolicy(
                 relation="logging",
                 ports=[NGINX_PORT],
             ),
-            # Allow access to loki logging API port for charms related over the grafana_source relation.
+            # Allow access to the Loki logging API port for charms related over the grafana_source relation.
             # This is a unit policy as loki's unit address is published. Incase of ingress url, this is handled by the service_mesh ingress.
             UnitPolicy(
                 relation="grafana-source",
