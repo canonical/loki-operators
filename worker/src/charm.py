@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 CONTAINER_NAME = "loki"
 LOKI_PORT = 3100
 
-_LEGACY_WORKER_PORTS = [LOKI_PORT]
+_WORKER_PORTS = [LOKI_PORT]
 
 
 class LokiWorkerK8SOperatorCharm(CharmBase):
@@ -61,7 +61,7 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
                 "upgrade the coordinator to a newer revision. Falling back now to "
                 "legacy behaviour and opening all ports."
             )
-            self.unit.set_ports(*_LEGACY_WORKER_PORTS)
+            self.unit.set_ports(*_WORKER_PORTS)
 
     # === UTILITY METHODS === #
 

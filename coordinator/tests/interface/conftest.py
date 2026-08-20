@@ -16,7 +16,7 @@ from ops.pebble import Layer
 from scenario import Relation
 from scenario.state import Container, Exec, State
 
-from charm import LokiCoordinatorK8SOperatorCharm
+from charm import NGINX_PORT, LokiCoordinatorK8SOperatorCharm
 
 nginx_container = Container(
     name="nginx",
@@ -43,7 +43,7 @@ nginx_container = Container(
                 "lokitool",
                 "rules",
                 "sync",
-                f"--address=http://{socket.getfqdn()}:8080",
+                f"--address=http://{socket.getfqdn()}:{NGINX_PORT}",
                 "--id=fake",
             ],
             return_code=0,

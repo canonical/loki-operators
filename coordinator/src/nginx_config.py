@@ -3,10 +3,9 @@
 """Nginx workload."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, Final, List
 
 from charmlibs.nginx_k8s import (
-    Nginx,
     NginxLocationConfig,
     NginxUpstream,
 )
@@ -20,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 class NginxHelper:
     """Helper class to generate the nginx configuration."""
-    _loki_port = 3100
-    _nginx_port = 8080
-    _nginx_tls_port = 443
+    port: Final[int] = 3100
 
     _locations_write: List[NginxLocationConfig] = [
         NginxLocationConfig(path="/loki/api/v1/push", backend="write",modifier="="),
@@ -52,25 +49,16 @@ class NginxHelper:
 
     def upstreams(self) -> List[NginxUpstream]:
         """Generate the list of Nginx upstream metadata configurations."""
-        upstreams = [NginxUpstream(role, self._loki_port, address_lookup_key=role) for role in ROLES]
+        upstreams = [NginxUpstream(role, self.port, address_lookup_key=role) for role in ROLES]
         # add a generic `worker` upstream that routes to all workers (address_lookup_key=None includes all)
-        upstreams.append(NginxUpstream("worker", self._loki_port, address_lookup_key=None))
+        upstreams.append(NginxUpstream("worker", self.port, address_lookup_key=None))
         return upstreams
 
     def server_ports_to_locations(self) -> Dict[int, List[NginxLocationConfig]]:
         """Generate a mapping from server ports to a list of Nginx location configurations."""
         return {
-            self._nginx_tls_port if self._tls_available else self._nginx_port: self._locations_write + self._locations_backend + self._locations_read + self._locations_worker
+            self.port: self._locations_write + self._locations_backend + self._locations_read + self._locations_worker
         }
-
-    @property
-    def _tls_available(self) -> bool:
-        return (
-                self._container.can_connect()
-                and self._container.exists(Nginx.CERT_PATH)
-                and self._container.exists(Nginx.KEY_PATH)
-                and self._container.exists(Nginx.CA_CERT_PATH)
-            )
 
 
 

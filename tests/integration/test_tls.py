@@ -112,7 +112,7 @@ def test_logs_in_loki_with_tls(juju: Juju):
     """Check that logs can be ingested and queried with TLS enabled."""
     # With TLS enabled, we must use HTTPS. We use verify=False since we're using self-signed certs.
     loki_url = get_unit_address(juju, "loki", 0)
-    response = requests.get(f"https://{loki_url}:443/loki/api/v1/series", verify=False)
+    response = requests.get(f"https://{loki_url}:3100/loki/api/v1/series", verify=False)
     assert response.status_code == 200
     result = response.json()
     assert result["status"] == "success"
