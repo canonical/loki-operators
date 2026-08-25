@@ -9,6 +9,7 @@ jobs:
         name: TiCs-scan
         uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v2
         with:
+            lockfile-path: coordinator
             coverage-folder: .cover
             tiobe-project-name: loki-operators
         secrets: inherit
