@@ -39,6 +39,7 @@ class NginxHelper:
         NginxLocationConfig(path="/loki/api/v1/format_query", backend="worker",modifier="="),
         NginxLocationConfig(path="/loki/api/v1/status/buildinfo", backend="worker",modifier="="),
         NginxLocationConfig(path="/ring", backend="worker",modifier="="),
+        NginxLocationConfig(path="/ready", backend="worker",modifier="="),
     ]
 
     def __init__(
