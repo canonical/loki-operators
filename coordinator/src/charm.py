@@ -31,6 +31,11 @@ from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerApp
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
+from cosl import (
+    AlertRulesCustomization,
+    AlertRulesCustomizationError,
+    AlertRulesCustomizationValidationError,
+)
 from cosl.interfaces.datasource_exchange import DatasourceDict
 from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
@@ -49,8 +54,11 @@ NGINX_PORT = NginxHelper.port
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
 
+    _stored = ops.StoredState()
+
     def __init__(self, *args: Any):
         super().__init__(*args)
+        self._stored.set_default(alert_rules_customization_invalid=False)
 
         self._nginx_container = self.unit.get_container("nginx")
         self._nginx_prometheus_exporter_container = self.unit.get_container(
@@ -320,7 +328,27 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 hashable = hashable.encode("utf-8")
             return hashlib.sha256(hashable).hexdigest()
 
+        # Parse and apply alert rule customizations
         loki_alerts = self.loki_provider.alerts
+        try:
+            customization = AlertRulesCustomization.from_yaml(
+                cast(str, self.model.config.get("alert_rule_customizations") or ""),
+                query_type="logql",
+            )
+        except AlertRulesCustomizationError as e:
+            logger.error("An error occurred while parsing alert rule customizations: %s", e)
+            customization = AlertRulesCustomization(query_type="logql")
+
+        try:
+            loki_alerts = customization.apply(loki_alerts)
+            self._stored.alert_rules_customization_invalid = False
+        except AlertRulesCustomizationValidationError:
+            logger.info(
+                "Some alerts became invalid after applying the provided customizations. "
+                "ALL customizations are now dropped."
+            )
+            self._stored.alert_rules_customization_invalid = True
+            loki_alerts = self.loki_provider.alerts
         alerts_hash = sha256(str(loki_alerts))
         alert_rules_changed = alerts_hash != self._pull(ALERTS_HASH_PATH)
 
@@ -386,6 +414,16 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Include alert-rule validation status in the unit status."""
         event.add_status(ActiveStatus())
+        try:
+            AlertRulesCustomization.from_yaml(
+                cast(str, self.model.config.get("alert_rule_customizations") or ""),
+                query_type="logql",
+            )
+        except AlertRulesCustomizationError as e:
+            logger.error("Invalid alert rule customizations: %s", e)
+            event.add_status(BlockedStatus("Invalid alert rule customizations. See debug-log"))
+        if self._stored.alert_rules_customization_invalid:
+            event.add_status(BlockedStatus("Unable to validate alert rule customizations. See debug-log"))
         if self.loki_provider.has_invalid_alert_rules():
             event.add_status(BlockedStatus("Invalid alert rules. See debug-log"))
 
