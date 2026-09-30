@@ -8,7 +8,7 @@ dependencies = [
   "coordinated-workers>=4.1.2",
   "charmed-service-mesh-helpers>=0.2.0",
   "lightkube-extensions",
-  "cosl",
+  "cosl>=1.11.1",
   "pydantic>=2",
 ]
 
