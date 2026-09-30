@@ -191,9 +191,22 @@ def then_active_customizations(state_out):
 
 
 @then("all provided alert rules are still written unchanged")
-def then_all_rules_still_written(state_out, context):
-    rules = read_all_rules(context, state_out)
-    assert rules, "no alert rules were written to disk"
+def then_all_rules_still_written(state_out, rw_relation, context, nginx_container, nginx_prometheus_exporter_container, s3, all_worker):
+    """Compare the on-disk rules against a baseline run with no customizations applied."""
+    baseline = _run_config_changed(
+        context,
+        nginx_container,
+        nginx_prometheus_exporter_container,
+        {},
+        rw_relation,
+        s3,
+        all_worker,
+    )
+    baseline_rules = read_all_rules(context, baseline)
+    actual_rules = read_all_rules(context, state_out)
+    assert actual_rules == baseline_rules, (
+        f"the written alert rules changed:\nactual={actual_rules!r}\nbaseline={baseline_rules!r}"
+    )
 
 
 @then("the written alert rules are unchanged")
