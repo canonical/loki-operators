@@ -252,6 +252,17 @@ config:
         For more info, see the Loki docs: https://grafana.com/docs/loki/latest/operations/storage/retention/
       type: int
       default: 15
+    max-chunk-age:
+      description: |
+        Maximum duration of a log stream chunk in memory (Prometheus duration: s, m, h, d, w, y).
+        This controls how far back in time out-of-order log entries are accepted:
+        the allowed out-of-order window is `max_chunk_age / 2`. For example, a value of `2h`
+        (the default) allows log entries up to 1 hour behind the most recent entry.
+
+        Increasing this value increases the memory footprint of the ingesters.
+        Ref: https://grafana.com/docs/loki/next/configure/#accept-out-of-order-writes
+      type: string
+      default: "2h"
     reporting_enabled:
       description: |
         Toggle anonymous reporting of usage info to Grafana.

@@ -147,9 +147,24 @@ def test_build_frontend_config(loki_config: LokiConfig):
 def test_build_ingester_config(loki_config: LokiConfig):
     ingester_config = loki_config._ingester_config()
     expected_config = {
-        "wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True}
+        "max_chunk_age": "2h",
+        "wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True},
     }
     assert ingester_config == expected_config
+
+
+@pytest.mark.parametrize(
+    "max_chunk_age",
+    [
+        "1h",
+        "30m",
+        "15m",
+        "4h",
+    ],
+)
+def test_build_ingester_config_max_chunk_age(loki_config: LokiConfig, max_chunk_age: str):
+    ingester_config = loki_config._ingester_config(max_chunk_age=max_chunk_age)
+    assert ingester_config["max_chunk_age"] == max_chunk_age
 
 
 @pytest.mark.parametrize(
