@@ -64,12 +64,10 @@ class LokiConfig:
         alertmanager_urls: Set[str] = set(),
         root_data_dir: Path = Path("/data"),
         recovery_data_dir: Path = Path("/recovery-data"),
-        max_chunk_age: str = "2h",
     ):
         self._alertmanager_urls = alertmanager_urls
         self._root_data_dir = root_data_dir
         self._recovery_data_dir = recovery_data_dir
-        self._max_chunk_age = max_chunk_age
 
     def config(self, coordinator: Coordinator) -> str:
         """Generate shared config file for loki.
@@ -84,7 +82,7 @@ class LokiConfig:
                 retention_period=int(coordinator._charm.config["retention-period"])
             ),
             "frontend": self._frontend_config(),
-            "ingester": self._ingester_config(max_chunk_age=self._max_chunk_age),
+            "ingester": self._ingester_config(),
             "limits_config": self._limits_config(
                 ingestion_rate_mb=int(coordinator._charm.config["ingestion-rate-mb"]),
                 ingestion_burst_size_mb=int(coordinator._charm.config["ingestion-burst-size-mb"]),
@@ -162,14 +160,13 @@ class LokiConfig:
             "compress_responses": True,
         }
 
-    def _ingester_config(self, max_chunk_age: str = "2h") -> Dict[str, Any]:
+    def _ingester_config(self) -> Dict[str, Any]:
         return {
-            "max_chunk_age": max_chunk_age,
             "wal": {
                 "dir": os.path.join(CHUNKS_DIR, "wal"),
                 "enabled": True,
                 "flush_on_shutdown": True,
-            },
+            }
         }
 
     def _limits_config(

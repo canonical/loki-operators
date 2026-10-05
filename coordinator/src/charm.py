@@ -37,7 +37,6 @@ from cosl import (
     AlertRulesCustomizationValidationError,
 )
 from cosl.interfaces.datasource_exchange import DatasourceDict
-from cosl.time_validation import is_valid_timespec
 from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
 
@@ -72,7 +71,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             scheme=lambda: urlparse(self.internal_url).scheme,
         )
         self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
-        self._max_chunk_age: str = str(self.model.config.get("max-chunk-age", "2h"))
         self.coordinator = Coordinator(
             charm=self,
             roles_config=LOKI_ROLES_CONFIG,
@@ -102,8 +100,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 enable_status_page=True,
             ),
             workers_config=LokiConfig(
-                alertmanager_urls=self.alertmanager_consumer.get_cluster_info(),
-                max_chunk_age=self._max_chunk_age,
+                alertmanager_urls=self.alertmanager_consumer.get_cluster_info()
             ).config,
             worker_ports=lambda _: tuple({3100}),
             resources_requests=self.get_resource_requests,
@@ -417,9 +414,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Include alert-rule validation status in the unit status."""
         event.add_status(ActiveStatus())
-        if not is_valid_timespec(self._max_chunk_age):
-            logger.error("Invalid max-chunk-age: %s", self._max_chunk_age)
-            event.add_status(BlockedStatus("Invalid max-chunk-age. See debug-log"))
         try:
             AlertRulesCustomization.from_yaml(
                 cast(str, self.model.config.get("alert_rule_customizations") or ""),
