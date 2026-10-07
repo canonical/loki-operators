@@ -27,6 +27,7 @@ from charms.istio_beacon_k8s.v0.service_mesh import (
     UnitPolicy,
 )
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
+from charms.prometheus_k8s.v1.prometheus_remote_write import PrometheusRemoteWriteConsumer
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
@@ -71,6 +72,16 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             scheme=lambda: urlparse(self.internal_url).scheme,
         )
         self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
+        self.remote_write_consumer = PrometheusRemoteWriteConsumer(
+            self,
+            relation_name="send-remote-write",
+            peer_relation_name="loki-peers",
+            forward_alert_rules=False,
+        )
+        self.framework.observe(
+            self.remote_write_consumer.on.endpoints_changed,
+            self._on_remote_write_endpoints_changed,
+        )
         self.coordinator = Coordinator(
             charm=self,
             roles_config=LOKI_ROLES_CONFIG,
@@ -100,7 +111,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 enable_status_page=True,
             ),
             workers_config=LokiConfig(
-                alertmanager_urls=self.alertmanager_consumer.get_cluster_info()
+                alertmanager_urls=self.alertmanager_consumer.get_cluster_info(),
+                remote_write_url=self._remote_write_url(),
             ).config,
             worker_ports=lambda _: tuple({3100}),
             resources_requests=self.get_resource_requests,
@@ -171,6 +183,11 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def _on_certificates_changed(self, _) -> None:
         """Certificates relation changed: reconcile ingress scheme/port."""
+        if self.coordinator.can_handle_events:
+            self._reconcile()
+
+    def _on_remote_write_endpoints_changed(self, _) -> None:
+        """Remote-write endpoints changed: trigger config rebuild."""
         if self.coordinator.can_handle_events:
             self._reconcile()
 
@@ -401,6 +418,20 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     def get_resource_requests(self, _) -> Dict[str, str]:
         """Returns a dictionary for the "requests" portion of the resources requirements."""
         return {"cpu": "50m", "memory": "100Mi"}
+
+    def _remote_write_url(self) -> Optional[str]:
+        """Return the remote-write endpoint URL for the ruler, if any.
+
+        Returns:
+            The URL of the remote-write endpoint, or None if not related.
+        """
+        endpoints = self.remote_write_consumer.endpoints
+        if not endpoints:
+            logger.debug("No remote-write endpoints available")
+            return None
+        url = endpoints[0].get("url", "")
+        logger.debug("Remote-write endpoint selected: %s", url)
+        return url or None
 
     def _on_logging_relation_changed(self, event: ops.RelationChangedEvent):
         """Update the Loki push API endpoint whenever a logging relation changes.
