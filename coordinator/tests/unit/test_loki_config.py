@@ -206,6 +206,36 @@ def test_build_query_range_config(loki_config: LokiConfig):
 # TODO: add test_build_ruler_config
 
 
+def test_build_ruler_config_remote_write(loki_config: LokiConfig, coordinator):
+    coordinator._charm = MagicMock()
+    coordinator._charm.config = {}
+
+    ruler_config = loki_config._ruler_config(coordinator)
+    assert ruler_config["enable_sharding"] is True
+    assert ruler_config["enable_api"] is True
+
+    # Default: no alertmanager
+    assert ruler_config["alertmanager_url"] == ""
+    # The coordinator._external_url is set by the mock, should be present
+    assert "external_url" in ruler_config
+
+    # No remote_write when no URL is provided
+    assert "remote_write" not in ruler_config
+
+
+def test_build_ruler_config_with_remote_write(loki_config: LokiConfig, coordinator):
+    coordinator._charm = MagicMock()
+    coordinator._charm.config = {}
+
+    loki_config._remote_write_url = "http://10.0.0.1:9090/api/v1/write"
+
+    ruler_config = loki_config._ruler_config(coordinator)
+    assert ruler_config["remote_write"] == {
+        "enabled": True,
+        "client": {"url": "http://10.0.0.1:9090/api/v1/write"},
+    }
+
+
 def test_build_schema_config(loki_config: LokiConfig):
     schema_config = loki_config._schema_config()
     expected_config = {

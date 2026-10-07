@@ -184,6 +184,14 @@ requires:
     limit: 1
     description: |
       Enables sending workload traces to a distributed tracing backend such as Tempo.
+  send-remote-write:
+    interface: prometheus_remote_write
+    optional: true
+    description: |
+      Integration to send metrics to a 
+      Prometheus-remote-write-compatible endpoint.
+      This is typically used in order for the Loki ruler component to forward metrics generated
+      from recording rules to a Prometheus-compatible endpoint.
   catalogue:
     interface: catalogue
     optional: true

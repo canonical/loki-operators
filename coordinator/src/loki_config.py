@@ -64,10 +64,12 @@ class LokiConfig:
         alertmanager_urls: Set[str] = set(),
         root_data_dir: Path = Path("/data"),
         recovery_data_dir: Path = Path("/recovery-data"),
+        remote_write_url: Optional[str] = None,
     ):
         self._alertmanager_urls = alertmanager_urls
         self._root_data_dir = root_data_dir
         self._recovery_data_dir = recovery_data_dir
+        self._remote_write_url = remote_write_url
 
     def config(self, coordinator: Coordinator) -> str:
         """Generate shared config file for loki.
@@ -233,9 +235,9 @@ class LokiConfig:
         #
         # But we are setting Loki's external url
 
-        return {
+        external_url = coordinator._external_url
+        ruler_config = {
             "alertmanager_url": ",".join(sorted(self._alertmanager_urls)),
-            "external_url": coordinator._external_url,
             "enable_sharding": True,
             "rule_path": str(self._root_data_dir / "data-ruler"),
             "enable_api": True,
@@ -243,6 +245,14 @@ class LokiConfig:
             # "storage": {"local": {"directory": str(self._root_data_dir / "data-alerts")}},
             "ring": {"kvstore": {"store": "memberlist"}},
         }
+        if external_url:
+            ruler_config["external_url"] = external_url
+        if url := self._remote_write_url:
+            ruler_config["remote_write"] = {
+                "enabled": True,
+                "client": {"url": url},
+            }
+        return ruler_config
 
     def _schema_config(self) -> Dict[str, Any]:
         # Ref: https://grafana.com/docs/loki/latest/configure/examples/configuration-examples/#10-expanded-s3-snippetyaml
