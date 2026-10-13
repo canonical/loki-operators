@@ -232,8 +232,9 @@ def test_build_ruler_config_with_remote_write(loki_config: LokiConfig, coordinat
     ruler_config = loki_config._ruler_config(coordinator)
     assert ruler_config["remote_write"] == {
         "enabled": True,
-        "client": {"url": "http://10.0.0.1:9090/api/v1/write"},
+        "clients": {"prometheus": {"url": "http://10.0.0.1:9090/api/v1/write"}},
     }
+    assert ruler_config["wal"] == {"dir": "/loki/ruler-wal"}
 
 
 def test_build_schema_config(loki_config: LokiConfig):

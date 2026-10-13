@@ -247,10 +247,11 @@ class LokiConfig:
         }
         if external_url:
             ruler_config["external_url"] = external_url
+        ruler_config["wal"] = {"dir": os.path.join(LOKI_DIR, "ruler-wal")}
         if url := self._remote_write_url:
             ruler_config["remote_write"] = {
                 "enabled": True,
-                "client": {"url": url},
+                "clients": {"prometheus": {"url": url}},
             }
         return ruler_config
 
