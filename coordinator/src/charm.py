@@ -24,6 +24,8 @@ from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.istio_beacon_k8s.v0.service_mesh import (
     AppPolicy,
+    Endpoint,
+    Method,
     UnitPolicy,
 )
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
@@ -249,10 +251,24 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             ),
             # Allow access to the Loki logging API port for charms related over the grafana_source relation.
             # This is a unit policy as loki's unit address is published. Incase of ingress url, this is handled by the service_mesh ingress.
+            # Kept for unit-addressed access; note that Grafana queries the coordinator via the
+            # ClusterIP Service (see _service_url), which requires the L7 AppPolicy below.
             UnitPolicy(
                 relation="grafana-source",
                 ports=[NGINX_PORT],
-            )
+            ),
+            # Grafana queries Loki via the ClusterIP Service (see _service_url), so an
+            # L7 AppPolicy (targetRefs: Service) is required in addition to the UnitPolicy above.
+            AppPolicy(
+                relation="grafana-source",
+                endpoints=[
+                    Endpoint(
+                        ports=[NGINX_PORT],
+                        methods=[Method.get, Method.post],
+                        paths=["*"],  # allow all paths for now; tighten later
+                    )
+                ],
+            ),
 
         ]
 
