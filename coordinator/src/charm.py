@@ -25,14 +25,19 @@ from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.istio_beacon_k8s.v0.service_mesh import (
     AppPolicy,
     Endpoint,
+    MeshPolicy,
     Method,
+    PolicyResourceManager,
+    PolicyTargetType,
     UnitPolicy,
 )
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
+from coordinated_workers.interfaces.cluster import ClusterRequirerAppData
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
+from lightkube import Client
 from cosl import (
     AlertRulesCustomization,
     AlertRulesCustomizationError,
@@ -51,6 +56,16 @@ logger = logging.getLogger(__name__)
 RULES_DIR = "/etc/loki-alerts/rules"
 ALERTS_HASH_PATH = "/etc/loki-alerts/alerts.sha256"
 NGINX_PORT = NginxHelper.port
+
+# The Loki worker role that runs the ruler component, i.e. the component that actually
+# dispatches alerts to Alertmanager. In Loki's simple-scalable topology the ruler lives in
+# the `backend` target (see src/nginx_config.py, where /loki/api/v1/rules and /prometheus/.*
+# are routed to the `backend` upstream). We scope the alertmanager auth policy strictly to
+# this role to avoid over-broadly authorizing every worker role.
+ALERTING_SOURCE_ROLE = "backend"
+
+# Alertmanager's HTTP API port (alertmanager-k8s _ports.api = 9093). Alerts are POSTed here.
+ALERTMANAGER_API_PORT = 9093
 
 
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
@@ -280,6 +295,105 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             https_port=NGINX_PORT,
         )
 
+    ###################################
+    # === ALERTMANAGER MESH POLICY === #
+    ###################################
+
+    def _alerting_source_apps(self) -> List[str]:
+        """Return the worker app names that run the ruler (i.e. send alerts to Alertmanager).
+
+        The `alerting` relation terminates at *this* coordinator, so the policy auto-generator
+        on the Alertmanager side can only derive the source principal from the coordinator app
+        (`sa/loki`). But the alert traffic actually originates from the `backend`-role workers
+        (`sa/loki-backend`), which run the ruler. We therefore discover the worker app names
+        from the cluster topology and emit a policy whose source is those worker apps.
+
+        We select every related worker app whose (meta-)role expands to include the ruler role
+        (`ALERTING_SOURCE_ROLE`), which covers both the `backend` and `all` deployments.
+        """
+        cluster = self.coordinator.cluster
+        source_apps: set[str] = set()
+        for relation in cluster._relations:
+            if not relation.app:
+                continue
+            try:
+                app_data = ClusterRequirerAppData.load(relation.data[relation.app])
+            except Exception as e:  # noqa: BLE001  (lib raises cosl DataValidationError)
+                logger.debug("Skipping cluster relation with invalid app databag: %s", e)
+                continue
+            if ALERTING_SOURCE_ROLE in cluster._expand_roles(app_data.role):
+                source_apps.add(relation.app.name)
+        return sorted(source_apps)
+
+    def _alertmanager_target_apps(self) -> List[str]:
+        """Return the Alertmanager app names related over the `alertmanager` relation."""
+        return sorted(
+            {rel.app.name for rel in self.model.relations.get("alertmanager", []) if rel.app}
+        )
+
+    def _alerting_mesh_policies(self) -> List[MeshPolicy]:
+        """Build L4 policies allowing ruler workers to reach Alertmanager :9093."""
+        policies: List[MeshPolicy] = []
+        source_apps = self._alerting_source_apps()
+        target_apps = self._alertmanager_target_apps()
+        if not source_apps or not target_apps:
+            return policies
+        for target_app in target_apps:
+            for source_app in source_apps:
+                policies.append(
+                    MeshPolicy(
+                        source_namespace=self.model.name,
+                        source_app_name=source_app,
+                        target_namespace=self.model.name,
+                        target_app_name=target_app,
+                        target_type=PolicyTargetType.unit,
+                        endpoints=[Endpoint(ports=[ALERTMANAGER_API_PORT])],
+                    )
+                )
+        return policies
+
+    def _alerting_policy_resource_manager(self) -> PolicyResourceManager:
+        """PolicyResourceManager scoped to the alertmanager (ruler-source) policies."""
+        instance = f"{self.app.name}-{self.model.name}"
+        scope = f"{self.app.name}-{self.model.name}-alerting"
+        return PolicyResourceManager(
+            charm=self,
+            lightkube_client=Client(  # type: ignore
+                namespace=self.model.name, field_manager=f"{self.app.name}-{self.model.name}"
+            ),
+            labels={
+                "app.kubernetes.io/instance": instance,
+                "kubernetes-resource-handler-scope": scope,
+            },
+            logger=logger,
+        )
+
+    def _reconcile_alerting_mesh_policies(self) -> None:
+        """Reconcile the ruler-worker -> Alertmanager auth policies.
+
+        These cannot be expressed as a regular UnitPolicy/AppPolicy because the source
+        principal must be the backend workers, not this coordinator (the app holding the
+        `alerting` relation). We therefore manage the AuthorizationPolicy directly via a
+        PolicyResourceManager, mirroring the cluster-internal policy pattern in
+        coordinated_workers.service_mesh.
+        """
+        mesh = self.coordinator._mesh
+        if not mesh:
+            return
+        prm = self._alerting_policy_resource_manager()
+        mesh_type = mesh.mesh_type()
+        if mesh_type:
+            policies = self._alerting_mesh_policies()
+            logger.info(
+                "Reconciling %d ruler->alertmanager mesh policies (mesh_type=%s).",
+                len(policies),
+                mesh_type,
+            )
+            prm.reconcile(policies, mesh_type)
+        else:
+            # No active service-mesh relation: clean up any policies we previously created.
+            prm.delete()
+
     ###########################
     # === UTILITY METHODS === #
     ###########################
@@ -456,6 +570,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.loki_provider.update_endpoint(url=self.external_url)
         # Open necessary service ports. Needed for telemetry proxying.
         self.unit.set_ports(NGINX_PORT)
+
+        # Reconcile the ruler-worker -> Alertmanager auth policies (sa/loki-backend -> :9093).
+        self._reconcile_alerting_mesh_policies()
 
         # Re-publish ingress requirements so scheme/port reflect current TLS state.
         # The scheme lambda is evaluated at publish time, so after the Coordinator's reconcile
