@@ -36,13 +36,13 @@ from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerApp
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
-from lightkube import Client
 from cosl import (
     AlertRulesCustomization,
     AlertRulesCustomizationError,
     AlertRulesCustomizationValidationError,
 )
 from cosl.interfaces.datasource_exchange import DatasourceDict
+from lightkube import Client
 from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
 
