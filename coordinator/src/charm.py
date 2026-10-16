@@ -60,6 +60,24 @@ NGINX_PORT = NginxHelper.port
 ALERTMANAGER_API_PORT = 9093
 
 
+def _truncate_label_value(value: str, max_length: int = 63) -> str:
+    """Truncate a Kubernetes label value to fit within the max length.
+
+    Kubernetes label values are capped at 63 characters. If the value exceeds
+    ``max_length`` it is truncated and a short hash suffix is appended so that
+    distinct inputs stay distinct (two long names sharing a prefix won't collide
+    into managing each other's resources).
+
+    Kept local rather than importing the equivalent (private, explicitly-temporary)
+    helper from ``coordinated_workers.service_mesh``.
+    """
+    if len(value) <= max_length:
+        return value
+    digest = hashlib.sha256(value.encode()).hexdigest()[:8]
+    # Leave room for a dash + 8-char hash suffix.
+    return f"{value[: max_length - 9]}-{digest}"
+
+
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
     """Charm the service."""
 
@@ -337,8 +355,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def _alerting_policy_resource_manager(self) -> PolicyResourceManager:
         """PolicyResourceManager scoped to the alertmanager (ruler-source) policies."""
-        instance = f"{self.app.name}-{self.model.name}"
-        scope = f"{self.app.name}-{self.model.name}-alerting"
+        instance = _truncate_label_value(f"{self.app.name}-{self.model.name}")
+        scope = _truncate_label_value(f"{self.app.name}-{self.model.name}-alerting")
         return PolicyResourceManager(
             charm=self,
             lightkube_client=Client(  # type: ignore
