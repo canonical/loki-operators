@@ -25,7 +25,10 @@ from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.istio_beacon_k8s.v0.service_mesh import (
     AppPolicy,
     Endpoint,
+    MeshPolicy,
     Method,
+    PolicyResourceManager,
+    PolicyTargetType,
     UnitPolicy,
 )
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
@@ -39,6 +42,7 @@ from cosl import (
     AlertRulesCustomizationValidationError,
 )
 from cosl.interfaces.datasource_exchange import DatasourceDict
+from lightkube import Client
 from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
 
@@ -51,6 +55,18 @@ logger = logging.getLogger(__name__)
 RULES_DIR = "/etc/loki-alerts/rules"
 ALERTS_HASH_PATH = "/etc/loki-alerts/alerts.sha256"
 NGINX_PORT = NginxHelper.port
+
+# Alertmanager's HTTP API port (alertmanager-k8s _ports.api = 9093). Alerts are POSTed here.
+ALERTMANAGER_API_PORT = 9093
+
+
+def _truncate_label_value(value: str, max_length: int = 63) -> str:
+    """Truncate a Kubernetes label value to fit within the max length."""
+    if len(value) <= max_length:
+        return value
+    digest = hashlib.sha256(value.encode()).hexdigest()[:8]
+    # Leave room for a dash + 8-char hash suffix.
+    return f"{value[: max_length - 9]}-{digest}"
 
 
 class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
@@ -280,6 +296,84 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             https_port=NGINX_PORT,
         )
 
+    ###################################
+    # === ALERTMANAGER MESH POLICY === #
+    ###################################
+
+    def _alerting_source_apps(self) -> List[str]:
+        """Return the worker app names allowed to reach Alertmanager.
+
+        Notes:
+         - For simplicity we authorize *all* cluster worker apps. This can be tightened in the future.
+         - `gather_topology()` is unit-derived, so a worker app with no reporting units will not appear.
+        """
+        return sorted(
+            {unit["application"] for unit in self.coordinator.cluster.gather_topology()}
+        )
+
+    def _alertmanager_target_apps(self) -> List[str]:
+        """Return the Alertmanager app names related over the `alertmanager` relation."""
+        return sorted(
+            {rel.app.name for rel in self.model.relations.get("alertmanager", []) if rel.app}
+        )
+
+    def _alerting_mesh_policies(self) -> List[MeshPolicy]:
+        """Build L4 policies allowing cluster workers to reach Alertmanager :9093."""
+        policies: List[MeshPolicy] = []
+        source_apps = self._alerting_source_apps()
+        target_apps = self._alertmanager_target_apps()
+        for target_app in target_apps:
+            for source_app in source_apps:
+                policies.append(
+                    MeshPolicy(
+                        source_namespace=self.model.name,
+                        source_app_name=source_app,
+                        target_namespace=self.model.name,
+                        target_app_name=target_app,
+                        target_type=PolicyTargetType.unit,
+                        endpoints=[Endpoint(ports=[ALERTMANAGER_API_PORT])],
+                    )
+                )
+        return policies
+
+    def _alerting_policy_resource_manager(self) -> PolicyResourceManager:
+        """PolicyResourceManager scoped to the alertmanager (ruler-source) policies."""
+        instance = _truncate_label_value(f"{self.app.name}-{self.model.name}")
+        scope = _truncate_label_value(f"{self.app.name}-{self.model.name}-alerting")
+        return PolicyResourceManager(
+            charm=self,
+            lightkube_client=Client(  # type: ignore
+                namespace=self.model.name, field_manager=f"{self.app.name}-{self.model.name}"
+            ),
+            labels={
+                "app.kubernetes.io/instance": instance,
+                "kubernetes-resource-handler-scope": scope,
+            },
+            logger=logger,
+        )
+
+    def _reconcile_alerting_mesh_policies(self) -> None:
+        """Reconcile the worker -> Alertmanager auth policies.
+
+        Mirroring the cluster-internal policy pattern in coordinated_workers.service_mesh.
+        """
+        mesh = self.coordinator._mesh
+        if not mesh:
+            return
+        prm = self._alerting_policy_resource_manager()
+        mesh_type = mesh.mesh_type()
+        if mesh_type:
+            policies = self._alerting_mesh_policies()
+            logger.info(
+                "Reconciling %d worker->alertmanager mesh policies (mesh_type=%s).",
+                len(policies),
+                mesh_type,
+            )
+            prm.reconcile(policies, mesh_type)
+        else:
+            # No active service-mesh relation: clean up any policies we previously created.
+            prm.delete()
+
     ###########################
     # === UTILITY METHODS === #
     ###########################
@@ -456,6 +550,9 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         self.loki_provider.update_endpoint(url=self.external_url)
         # Open necessary service ports. Needed for telemetry proxying.
         self.unit.set_ports(NGINX_PORT)
+
+        # Reconcile the worker -> Alertmanager auth policies (sa/loki-backend -> :9093).
+        self._reconcile_alerting_mesh_policies()
 
         # Re-publish ingress requirements so scheme/port reflect current TLS state.
         # The scheme lambda is evaluated at publish time, so after the Coordinator's reconcile
