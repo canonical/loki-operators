@@ -159,7 +159,9 @@ def test_build_ingester_config(loki_config: LokiConfig):
         "1h",
         "30m",
         "15m",
-        "4h",
+        "0m",
+        "1d",
+        "1w",
     ],
 )
 def test_build_ingester_config_max_chunk_age(loki_config: LokiConfig, max_chunk_age: str):

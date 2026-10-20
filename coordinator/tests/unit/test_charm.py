@@ -205,8 +205,10 @@ def test_config_max_chunk_age_validation(
     "max_chunk_age, expected_value",
     [
         ("2h", "2h"),
-        ("4h", "4h"),
         ("30m", "30m"),
+        ("0m", "0m"),
+        ("1d", "1d"),
+        ("1w", "1w"),
     ],
 )
 def test_config_max_chunk_age_worker_config(
