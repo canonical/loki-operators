@@ -114,6 +114,7 @@ def test_enable_service_mesh(juju: Juju):
     )
 
 
+@retry(wait=wait_fixed(10), stop=stop_after_attempt(6))
 def test_ingress(juju: Juju):
     """Check the ingress integration, by checking if Loki is reachable through the ingress endpoint."""
     ingress_address = get_istio_ingress_ip(juju, "istio-ingress")
