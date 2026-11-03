@@ -6,7 +6,6 @@ import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
-from ops import ActiveStatus
 from scenario import Container, Context, Exec, Relation
 
 from charm import NGINX_PORT, LokiCoordinatorK8SOperatorCharm
@@ -16,18 +15,11 @@ from charm import NGINX_PORT, LokiCoordinatorK8SOperatorCharm
 def loki_charm(tmp_path):
     with patch("coordinated_workers.coordinator.Coordinator._reconcile_charm_labels"):
         with patch("lightkube.core.client.GenericSyncClient"):
-            with patch.multiple(
-                "coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
-                _namespace="test-namespace",
-                _patch=lambda _: None,
-                get_status=lambda _: ActiveStatus(""),
-                is_ready=lambda _: True,
+            with patch(
+                "charm.LokiCoordinatorK8SOperatorCharm._ensure_lokitool",
+                MagicMock(return_value=None),
             ):
-                with patch(
-                    "charm.LokiCoordinatorK8SOperatorCharm._ensure_lokitool",
-                    MagicMock(return_value=None),
-                ):
-                    yield LokiCoordinatorK8SOperatorCharm
+                yield LokiCoordinatorK8SOperatorCharm
 
 
 @pytest.fixture(autouse=True)

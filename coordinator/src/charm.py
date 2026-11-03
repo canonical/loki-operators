@@ -18,22 +18,25 @@ from urllib.parse import urlparse
 
 import ops
 import yaml
-from charmlibs.nginx_k8s import NginxConfig
-from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
-from charms.catalogue_k8s.v1.catalogue import CatalogueItem
-from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
-from charms.istio_beacon_k8s.v0.service_mesh import (
+from canonical_service_mesh.k8s.resource_manager import (
+    PolicyResourceManager,
+)
+from charmlibs.interfaces.service_mesh import (
     AppPolicy,
     Endpoint,
     MeshPolicy,
     Method,
-    PolicyResourceManager,
     PolicyTargetType,
     UnitPolicy,
 )
+from charmlibs.nginx_k8s import NginxConfig
+from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsumer
+from charms.catalogue_k8s.v1.catalogue import CatalogueItem
+from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
+from coordinated_workers.helpers import NON_RECONCILABLE_EVENTS
 from coordinated_workers.telemetry_correlation import TelemetryCorrelation
 from coordinated_workers.worker_telemetry import WorkerTelemetryProxyConfig
 from cosl import (
@@ -42,6 +45,7 @@ from cosl import (
     AlertRulesCustomizationValidationError,
 )
 from cosl.interfaces.datasource_exchange import DatasourceDict
+from cosl.reconciler import all_events, observe_events
 from cosl.time_validation import is_valid_timespec
 from lightkube import Client
 from ops.model import ActiveStatus, BlockedStatus, ModelError
@@ -124,8 +128,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 max_chunk_age=self._max_chunk_age,
             ).config,
             worker_ports=lambda _: tuple({3100}),
-            resources_requests=self.get_resource_requests,
-            container_name="nginx",  # container to which resource limits will be applied
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
             worker_telemetry_proxy_config=self._worker_telemetry_proxy_config,
@@ -172,8 +174,12 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         )
         self.loki_provider.update_endpoint(url=self.external_url)
 
-        # do this regardless of what event we are processing
-        self._reconcile()
+        # Register (rather than directly call) our own reconcile. Observers run in
+        # registration order, and Coordinator's reconcile was registered first (it publishes
+        # the worker config and reconciles nginx), so it always runs before our alert-rule
+        # sync. This prevents a slow alert-rule sync from delaying the worker config
+        # publication and causing an avoidable worker outage.
+        observe_events(self, all_events.difference(NON_RECONCILABLE_EVENTS), self._reconcile)
 
     def _on_ingress_ready(self, event: IngressPerAppReadyEvent):
         """Log the obtained ingress address.
@@ -510,10 +516,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             for _, ds_uid in ds_uids.items():
                 raw_datasources.append({"type": "loki", "uid": ds_uid, "grafana_uid": grafana_uid})
         self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
-
-    def get_resource_requests(self, _) -> Dict[str, str]:
-        """Returns a dictionary for the "requests" portion of the resources requirements."""
-        return {"cpu": "50m", "memory": "100Mi"}
 
     def _on_logging_relation_changed(self, event: ops.RelationChangedEvent):
         """Update the Loki push API endpoint whenever a logging relation changes.
