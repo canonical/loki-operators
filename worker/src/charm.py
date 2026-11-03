@@ -41,9 +41,6 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
             pebble_layer=self.pebble_layer,
             endpoints={"cluster": "loki-cluster"},
             readiness_check_endpoint=self.readiness_check_endpoint,
-            resources_requests=lambda _: {"cpu": "50m", "memory": "200Mi"},
-            # container we want to resource-patch
-            container_name=CONTAINER_NAME,
         )
 
         self._container = self.unit.get_container(CONTAINER_NAME)
