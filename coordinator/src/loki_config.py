@@ -46,8 +46,8 @@ HTTP_LISTEN_PORT = 3100
 LOKI_DIR = "/loki"
 PERSISTED_DIR = "/loki/persisted"
 COMPACTOR_DIR = os.path.join(PERSISTED_DIR, "compactor")
-CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
-ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
+WAL_DIR = os.path.join(PERSISTED_DIR, "wal")
+ACTIVE_INDEX_DIR = os.path.join(PERSISTED_DIR, "index")
 CACHE_DIR = os.path.join(LOKI_DIR, "index_cache")
 
 LOKI_ROLES_CONFIG = ClusterRolesConfig(
@@ -167,7 +167,7 @@ class LokiConfig:
         return {
             "max_chunk_age": max_chunk_age,
             "wal": {
-                "dir": os.path.join(CHUNKS_DIR, "wal"),
+                "dir": WAL_DIR,
                 "enabled": True,
                 "flush_on_shutdown": True,
             },
