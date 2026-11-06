@@ -51,7 +51,7 @@ from lightkube import Client
 from ops.model import ActiveStatus, BlockedStatus, ModelError
 from ops.pebble import Error as PebbleError
 
-from loki_config import LOKI_ROLES_CONFIG, LokiConfig
+from loki_config import GRPC_LISTEN_PORT, HTTP_LISTEN_PORT, LOKI_ROLES_CONFIG, LokiConfig
 from nginx_config import NginxHelper
 
 # Log messages can be retrieved using juju debug-log
@@ -127,7 +127,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
                 alertmanager_urls=self.alertmanager_consumer.get_cluster_info(),
                 max_chunk_age=self._max_chunk_age,
             ).config,
-            worker_ports=lambda _: tuple({3100}),
+            worker_ports=lambda _: (HTTP_LISTEN_PORT, GRPC_LISTEN_PORT),
             workload_tracing_protocols=["jaeger_thrift_http"],
             catalogue_item=self._catalogue_item,
             worker_telemetry_proxy_config=self._worker_telemetry_proxy_config,

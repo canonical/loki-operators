@@ -43,6 +43,12 @@ REPLICATION_MIN_WORKERS = 3
 DEFAULT_REPLICATION = 3
 
 HTTP_LISTEN_PORT = 3100
+GRPC_LISTEN_PORT = 9095
+# Address Loki binds its gRPC server to. Processes running the `backend` target dial this very
+# address to reach their own compactor, and Go's proxy resolution can only exempt it via no_proxy
+# if it is non-empty (an empty host, i.e. ":9095", is always sent to the HTTP proxy). The worker
+# charm adds it to the workload's no_proxy.
+GRPC_LISTEN_ADDRESS = "0.0.0.0"
 LOKI_DIR = "/loki"
 PERSISTED_DIR = "/loki/persisted"
 COMPACTOR_DIR = os.path.join(PERSISTED_DIR, "compactor")
@@ -120,16 +126,43 @@ class LokiConfig:
             }
         }
 
+    def _compactor_grpc_address(self, coordinator: Coordinator) -> Optional[str]:
+        """Return the `host:port` gRPC address of the compactor, as dialed by the read targets.
+
+        This is the ClusterIP service of the backend worker app: worker-to-worker traffic stays
+        in-cluster (no ingress; gRPC is not routable via nginx/traefik, nor via an HTTP proxy) and
+        isn't pinned to a single backend unit. `.svc` hostnames are covered by the model's no_proxy.
+
+        If the backend role is spread over several worker apps, the first one (alphabetically) is used.
+        """
+        backend_addresses = coordinator.cluster.gather_addresses_by_role().get("backend", set())
+        backend_apps = sorted(
+            {
+                unit["application"]
+                for unit in coordinator.cluster.gather_topology()
+                if unit["address"] in backend_addresses
+            }
+        )
+        if not backend_apps:
+            return None
+        app_hostname = coordinator.app_hostname(
+            coordinator.hostname, backend_apps[0], coordinator._charm.model.name
+        )
+        return f"{app_hostname}:{GRPC_LISTEN_PORT}"
+
     def _common_config(self, coordinator: Coordinator) -> Dict[str, Any]:
         backend_scale = len(coordinator.cluster.gather_addresses_by_role().get("backend", []))
-        return {
+        common: Dict[str, Any] = {
             "path_prefix": LOKI_DIR,
             "replication_factor": (
                 1 if backend_scale < REPLICATION_MIN_WORKERS else DEFAULT_REPLICATION
             ),
-            "compactor_grpc_address": coordinator._external_url,
             "storage": {"s3": self._s3_storage_config(coordinator)},
         }
+        # Required by the read targets even when retention is disabled (to filter deleted logs).
+        if compactor_grpc_address := self._compactor_grpc_address(coordinator):
+            common["compactor_grpc_address"] = compactor_grpc_address
+        return common
 
     def _compactor_config(self, retention_period: int) -> Dict[str, Any]:
         """Compactor component config, which compacts index shards for performance.
@@ -316,6 +349,8 @@ class LokiConfig:
         _server = {
             "http_listen_address": "0.0.0.0",
             "http_listen_port": HTTP_LISTEN_PORT,
+            "grpc_listen_address": GRPC_LISTEN_ADDRESS,
+            "grpc_listen_port": GRPC_LISTEN_PORT,
         }
 
         if coordinator.nginx.are_certificates_on_disk:
