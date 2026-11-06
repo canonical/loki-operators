@@ -44,7 +44,7 @@ DEFAULT_REPLICATION = 3
 
 HTTP_LISTEN_PORT = 3100
 LOKI_DIR = "/loki"
-PERSISTED_DIR = "/loki/persisted"  # must match the `loki-persisted` mount in worker/charmcraft.yaml
+PERSISTED_DIR = "/loki/persisted"
 COMPACTOR_DIR = os.path.join(PERSISTED_DIR, "compactor")
 CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
 ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
