@@ -69,8 +69,8 @@ def test_reporting_config(context, s3, all_worker, nginx_container, nginx_promet
 @pytest.mark.parametrize(
     "retention_period, expected_config",
     [
-        (0, {'retention_enabled': False, 'working_directory': '/loki/compactor'}),
-        (10, {'retention_enabled': True, 'working_directory': '/loki/compactor', 'delete_request_store': 's3'}),
+        (0, {'retention_enabled': False, 'working_directory': '/loki/persisted/compactor'}),
+        (10, {'retention_enabled': True, 'working_directory': '/loki/persisted/compactor', 'delete_request_store': 's3'}),
     ]
 )
 def test_retention(context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container, retention_period, expected_config):
