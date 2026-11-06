@@ -44,10 +44,10 @@ DEFAULT_REPLICATION = 3
 
 HTTP_LISTEN_PORT = 3100
 LOKI_DIR = "/loki"
-PERSISTED_DIR = "/loki/persisted"
+PERSISTED_DIR = "/loki/persisted"  # must match the `loki-persisted` mount in worker/charmcraft.yaml
 COMPACTOR_DIR = os.path.join(PERSISTED_DIR, "compactor")
-CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
-ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
+CHUNKS_DIR = os.path.join(PERSISTED_DIR, "chunks")
+ACTIVE_INDEX_DIR = os.path.join(PERSISTED_DIR, "index")
 CACHE_DIR = os.path.join(LOKI_DIR, "index_cache")
 
 LOKI_ROLES_CONFIG = ClusterRolesConfig(

@@ -148,7 +148,7 @@ def test_build_ingester_config(loki_config: LokiConfig):
     ingester_config = loki_config._ingester_config()
     expected_config = {
         "max_chunk_age": "2h",
-        "wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True},
+        "wal": {"dir": "/loki/persisted/chunks/wal", "enabled": True, "flush_on_shutdown": True},
     }
     assert ingester_config == expected_config
 
@@ -243,7 +243,7 @@ def test_build_storage_config(loki_config: LokiConfig, coordinator):
     storage_config = loki_config._storage_config(coordinator)
     expected_config = {
         "tsdb_shipper": {
-            "active_index_directory": "/loki/index",
+            "active_index_directory": "/loki/persisted/index",
             "cache_location": "/loki/index_cache",
         },
         "aws": {
