@@ -148,7 +148,7 @@ def test_build_ingester_config(loki_config: LokiConfig):
     ingester_config = loki_config._ingester_config()
     expected_config = {
         "max_chunk_age": "2h",
-        "wal": {"dir": "/loki/persisted/chunks/wal", "enabled": True, "flush_on_shutdown": True},
+        "wal": {"dir": "/loki/persisted/wal", "enabled": True, "flush_on_shutdown": True},
     }
     assert ingester_config == expected_config
 
