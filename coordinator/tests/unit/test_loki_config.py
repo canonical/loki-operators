@@ -132,7 +132,7 @@ def test_build_compactor_config(loki_config: LokiConfig, retention: int, expecte
 
     # If retention is enabled, we should see the delete_request_store key in the returned dict and its value should be S3 from the Coordinator
     # Else, there should be no delete_request_store in the returned config
-    expected_config = {"retention_enabled": expected, "working_directory": "/loki/compactor"}
+    expected_config = {"retention_enabled": expected, "working_directory": "/loki/persisted/compactor"}
     if retention > 0:
         expected_config["delete_request_store"] = "s3"
     assert compactor_config == expected_config
@@ -148,7 +148,7 @@ def test_build_ingester_config(loki_config: LokiConfig):
     ingester_config = loki_config._ingester_config()
     expected_config = {
         "max_chunk_age": "2h",
-        "wal": {"dir": "/loki/chunks/wal", "enabled": True, "flush_on_shutdown": True},
+        "wal": {"dir": "/loki/persisted/wal", "enabled": True, "flush_on_shutdown": True},
     }
     assert ingester_config == expected_config
 
@@ -243,7 +243,7 @@ def test_build_storage_config(loki_config: LokiConfig, coordinator):
     storage_config = loki_config._storage_config(coordinator)
     expected_config = {
         "tsdb_shipper": {
-            "active_index_directory": "/loki/index",
+            "active_index_directory": "/loki/persisted/index",
             "cache_location": "/loki/index_cache",
         },
         "aws": {
