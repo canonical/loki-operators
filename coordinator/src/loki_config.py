@@ -132,21 +132,20 @@ class LokiConfig:
         This is the ClusterIP service of the backend worker app: worker-to-worker traffic stays
         in-cluster (no ingress; gRPC is not routable via nginx/traefik, nor via an HTTP proxy) and
         isn't pinned to a single backend unit. `.svc` hostnames are covered by the model's no_proxy.
-
-        If the backend role is spread over several worker apps, the first one (alphabetically) is used.
         """
         backend_addresses = coordinator.cluster.gather_addresses_by_role().get("backend", set())
-        backend_apps = sorted(
-            {
+        backend_app = next(
+            (
                 unit["application"]
                 for unit in coordinator.cluster.gather_topology()
                 if unit["address"] in backend_addresses
-            }
+            ),
+            None,
         )
-        if not backend_apps:
+        if not backend_app:
             return None
         app_hostname = coordinator.app_hostname(
-            coordinator.hostname, backend_apps[0], coordinator._charm.model.name
+            coordinator.hostname, backend_app, coordinator._charm.model.name
         )
         return f"{app_hostname}:{GRPC_LISTEN_PORT}"
 
