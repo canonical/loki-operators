@@ -83,8 +83,17 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
         # add proxy variables
         # Squid and friends can't proxy gRPC (HTTP/2) and the model's no_proxy can't match a
         # bare bind address, so we always exempt it.
+        # Also, the cluster's internal DNS suffix should be exempted from proxying.
+        # This helps workers communicate between themselves within the cluster using FQDN without being proxied.
         no_proxy = ",".join(
-            filter(None, [os.environ.get("JUJU_CHARM_NO_PROXY", ""), LOKI_GRPC_LISTEN_ADDRESS])
+            filter(
+                None,
+                [
+                    os.environ.get("JUJU_CHARM_NO_PROXY", ""),
+                    LOKI_GRPC_LISTEN_ADDRESS,
+                    ".svc.cluster.local",
+                ],
+            )
         )
         env.update(
             {
