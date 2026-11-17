@@ -168,3 +168,75 @@ def test_logging_endpoint_uses_external_url_with_ingress(
     logging_out = state_out.get_relation(logging_rel.id)
     endpoint = json.loads(logging_out.local_unit_data["endpoint"])
     assert endpoint["url"] == f"{traefik_url}/loki/api/v1/push"
+
+
+def _remote_write_relation(*remote_writes):
+    """Build a `send-remote-write` relation with one remote unit per entry in `remote_writes`."""
+    return Relation(
+        "send-remote-write",
+        remote_units_data={
+            i: {"remote_write": json.dumps({"url": url})} for i, url in enumerate(remote_writes)
+        },
+    )
+
+
+def test_remote_write_not_configured_without_endpoints(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
+):
+    """Test that the ruler has no remote_write block when no remote-write endpoint is related."""
+    # GIVEN a coordinator with workers but no send-remote-write relation
+    state_in = State(
+        relations=[s3, all_worker],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the worker config is rendered
+    state_out = context.run(context.on.config_changed(), state_in)
+
+    # THEN the ruler config does not enable remote_write
+    config = get_worker_config(state_out.relations, "loki-cluster", "ruler")
+    assert "remote_write" not in config
+
+
+def test_remote_write_uses_first_sorted_endpoint(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
+):
+    """Test that the ruler remote_writes to the lexicographically first endpoint URL."""
+    # GIVEN a send-remote-write relation with two remote units
+    later = "http://mimir-1.example/api/v1/push"
+    earlier = "http://mimir-0.example/api/v1/push"
+    remote_write = _remote_write_relation(later, earlier)
+    state_in = State(
+        relations=[s3, all_worker, remote_write],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the worker config is rendered
+    state_out = context.run(context.on.relation_changed(remote_write), state_in)
+
+    # THEN the ruler remote_writes to the first sorted endpoint
+    config = get_worker_config(state_out.relations, "loki-cluster", "ruler")
+    assert config["remote_write"]["clients"]["prometheus"]["url"] == earlier
+
+
+def test_remote_write_deduplicates_identical_endpoints(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
+):
+    """Test that several units advertising the same URL yield that single URL."""
+    # GIVEN two remote units advertising the same remote-write URL (e.g. behind one ingress)
+    url = "http://mimir.example/api/v1/push"
+    remote_write = _remote_write_relation(url, url)
+    state_in = State(
+        relations=[s3, all_worker, remote_write],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the worker config is rendered
+    state_out = context.run(context.on.relation_changed(remote_write), state_in)
+
+    # THEN the ruler remote_writes to that URL
+    config = get_worker_config(state_out.relations, "loki-cluster", "ruler")
+    assert config["remote_write"]["clients"]["prometheus"]["url"] == url

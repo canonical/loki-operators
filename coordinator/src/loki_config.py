@@ -48,6 +48,8 @@ COMPACTOR_DIR = os.path.join(LOKI_DIR, "compactor")
 CHUNKS_DIR = os.path.join(LOKI_DIR, "chunks")
 ACTIVE_INDEX_DIR = os.path.join(LOKI_DIR, "index")
 CACHE_DIR = os.path.join(LOKI_DIR, "index_cache")
+PERSISTED_DIR = os.path.join(LOKI_DIR, "persisted")  # Must match the worker's `loki-persisted` mount.
+RULER_WAL_DIR = os.path.join(PERSISTED_DIR, "ruler-wal")
 
 LOKI_ROLES_CONFIG = ClusterRolesConfig(
     roles=ROLES,
@@ -247,7 +249,7 @@ class LokiConfig:
         }
         if external_url:
             ruler_config["external_url"] = external_url
-        ruler_config["wal"] = {"dir": os.path.join(LOKI_DIR, "ruler-wal")}
+        ruler_config["wal"] = {"dir": RULER_WAL_DIR}
         if url := self._remote_write_url:
             ruler_config["remote_write"] = {
                 "enabled": True,
