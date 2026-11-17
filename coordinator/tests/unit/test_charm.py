@@ -69,8 +69,8 @@ def test_reporting_config(context, s3, all_worker, nginx_container, nginx_promet
 @pytest.mark.parametrize(
     "retention_period, expected_config",
     [
-        (0, {'retention_enabled': False, 'working_directory': '/loki/compactor'}),
-        (10, {'retention_enabled': True, 'working_directory': '/loki/compactor', 'delete_request_store': 's3'}),
+        (0, {'retention_enabled': False, 'working_directory': '/loki/persisted/compactor'}),
+        (10, {'retention_enabled': True, 'working_directory': '/loki/persisted/compactor', 'delete_request_store': 's3'}),
     ]
 )
 def test_retention(context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container, retention_period, expected_config):
@@ -240,3 +240,64 @@ def test_remote_write_deduplicates_identical_endpoints(
     # THEN the ruler remote_writes to that URL
     config = get_worker_config(state_out.relations, "loki-cluster", "ruler")
     assert config["remote_write"]["clients"]["prometheus"]["url"] == url
+
+
+@pytest.mark.parametrize(
+    "max_chunk_age, expected_status",
+    [
+        ("2h", "active"),
+        ("30m", "active"),
+        ("1h", "active"),
+        ("0s", "active"),
+        ("2hours", "blocked"),
+        ("banana", "blocked"),
+        ("5min", "blocked"),
+    ],
+)
+def test_config_max_chunk_age_validation(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container,
+    max_chunk_age, expected_status,
+):
+    """Ensure valid/invalid max-chunk-age values result in correct status."""
+    config = {"max-chunk-age": max_chunk_age}
+
+    state_in = State(
+        relations=[s3, all_worker],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+        config=config,
+    )
+
+    with context(context.on.collect_unit_status(), state_in) as mgr:
+        state_out = mgr.run()
+        assert state_out.unit_status.name == expected_status
+
+
+@pytest.mark.parametrize(
+    "max_chunk_age, expected_value",
+    [
+        ("2h", "2h"),
+        ("30m", "30m"),
+        ("0m", "0m"),
+        ("1d", "1d"),
+        ("1w", "1w"),
+    ],
+)
+def test_config_max_chunk_age_worker_config(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container,
+    max_chunk_age, expected_value,
+):
+    """Ensure max_chunk_age flows through to the worker relation databag."""
+    config = {"max-chunk-age": max_chunk_age}
+
+    state_in = State(
+        relations=[s3, all_worker],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+        config=config,
+    )
+
+    with context(context.on.relation_joined(all_worker), state_in) as mgr:
+        state_out = mgr.run()
+        ingester = get_worker_config(state_out.relations, "loki-cluster", "ingester")
+        assert ingester["max_chunk_age"] == expected_value
