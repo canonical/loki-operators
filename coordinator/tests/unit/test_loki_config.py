@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from coordinated_workers.coordinator import Coordinator
 from deepdiff import DeepDiff
 
 from src.loki_config import LokiConfig
@@ -69,6 +70,35 @@ def topology():
     return top
 
 
+def test_compactor_grpc_address_targets_backend_app_service(loki_config: LokiConfig, coordinator):
+    coordinator.cluster.gather_addresses_by_role.return_value = {
+        "read": {"read-0.addr"},
+        "backend": {"backend-0.addr", "backend-1.addr"},
+    }
+    coordinator.cluster.gather_topology.return_value = [
+        {"address": "read-0.addr", "application": "loki-read"},
+        {"address": "backend-0.addr", "application": "loki-backend"},
+        {"address": "backend-1.addr", "application": "loki-backend"},
+    ]
+    coordinator.hostname = "loki-0.loki-endpoints.some-model.svc.cluster.local"
+    coordinator.app_hostname = Coordinator.app_hostname
+    coordinator._charm.model.name = "some-model"
+    # scheme-less host:port, never the (possibly ingressed, http) external URL
+    assert (
+        loki_config._compactor_grpc_address(coordinator)
+        == "loki-backend.some-model.svc.cluster.local:9095"
+    )
+
+
+def test_compactor_grpc_address_omitted_without_backend(loki_config: LokiConfig, coordinator):
+    coordinator.cluster.gather_addresses_by_role.return_value = {"read": {"read-0.addr"}}
+    coordinator.cluster.gather_topology.return_value = [
+        {"address": "read-0.addr", "application": "loki-read"}
+    ]
+    assert loki_config._compactor_grpc_address(coordinator) is None
+    assert "compactor_grpc_address" not in loki_config._common_config(coordinator)
+
+
 def test_build_chunk_store_config(loki_config: LokiConfig):
     chunk_store_config = loki_config._chunk_store_config()
     expected_config = {"chunk_cache_config": {"embedded_cache": {"enabled": True}}}
@@ -85,11 +115,17 @@ def test_build_chunk_store_config(loki_config: LokiConfig):
 )
 def test_build_common_config(loki_config, coordinator, addresses_by_role, replication):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses_by_role
+    coordinator.cluster.gather_topology.return_value = [
+        {"address": "address.one", "application": "loki-backend"}
+    ]
+    coordinator.hostname = "loki-0.loki-endpoints.some-model.svc.cluster.local"
+    coordinator.app_hostname = Coordinator.app_hostname
+    coordinator._charm.model.name = "some-model"
     common_config = loki_config._common_config(coordinator)
     expected_config_http = {
         "path_prefix": "/loki",
         "replication_factor": replication,
-        "compactor_grpc_address": coordinator._external_url,
+        "compactor_grpc_address": "loki-backend.some-model.svc.cluster.local:9095",
         "storage": {
             "s3": {
                 "bucketnames": "your_bucket",
@@ -275,6 +311,8 @@ def test_build_server_config(loki_config: LokiConfig, coordinator):
     expected_config = {
         "http_listen_address": "0.0.0.0",
         "http_listen_port": 3100,
+        "grpc_listen_address": "0.0.0.0",
+        "grpc_listen_port": 9095,
         "http_tls_config": {
             "cert_file": "/etc/worker/server.cert",
             "key_file": "/etc/worker/private.key",

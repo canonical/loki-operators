@@ -22,7 +22,14 @@ logger = logging.getLogger(__name__)
 CONTAINER_NAME = "loki"
 LOKI_PORT = 3100
 
-_LEGACY_WORKER_PORTS = [LOKI_PORT]
+# Loki's gRPC port (server.grpc_listen_port in the coordinator-generated config). Used for
+# worker-to-worker traffic: ring, queriers -> ingesters, and read/backend -> compactor.
+LOKI_GRPC_PORT = 9095
+# Must match server.grpc_listen_address in the coordinator-generated config. Loki's backend
+# target dials this very address to reach its own compactor; it must bypass any HTTP proxy.
+LOKI_GRPC_LISTEN_ADDRESS = "0.0.0.0"
+
+_WORKER_PORTS = [LOKI_PORT, LOKI_GRPC_PORT]
 
 
 class LokiWorkerK8SOperatorCharm(CharmBase):
@@ -58,7 +65,7 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
                 "upgrade the coordinator to a newer revision. Falling back now to "
                 "legacy behaviour and opening all ports."
             )
-            self.unit.set_ports(*_LEGACY_WORKER_PORTS)
+            self.unit.set_ports(*_WORKER_PORTS)
 
     # === UTILITY METHODS === #
 
@@ -74,11 +81,25 @@ class LokiWorkerK8SOperatorCharm(CharmBase):
 
         env = {}
         # add proxy variables
+        # Squid and friends can't proxy gRPC (HTTP/2) and the model's no_proxy can't match a
+        # bare bind address, so we always exempt it.
+        # Also, the cluster's internal DNS suffix should be exempted from proxying.
+        # This helps workers communicate between themselves within the cluster using FQDN without being proxied.
+        no_proxy = ",".join(
+            filter(
+                None,
+                [
+                    os.environ.get("JUJU_CHARM_NO_PROXY", ""),
+                    LOKI_GRPC_LISTEN_ADDRESS,
+                    ".svc.cluster.local",
+                ],
+            )
+        )
         env.update(
             {
                 "https_proxy": os.environ.get("JUJU_CHARM_HTTPS_PROXY", ""),
                 "http_proxy": os.environ.get("JUJU_CHARM_HTTP_PROXY", ""),
-                "no_proxy": os.environ.get("JUJU_CHARM_NO_PROXY", ""),
+                "no_proxy": no_proxy,
             }
         )
 
