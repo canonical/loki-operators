@@ -242,6 +242,27 @@ def test_remote_write_deduplicates_identical_endpoints(
     assert config["remote_write"]["clients"]["prometheus"]["url"] == url
 
 
+def test_remote_write_removed_when_relation_broken(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
+):
+    """Test that breaking the send-remote-write relation removes remote_write from the ruler."""
+    # GIVEN a coordinator related over send-remote-write
+    remote_write = _remote_write_relation("http://mimir.example/api/v1/push")
+    state_in = State(
+        relations=[s3, all_worker, remote_write],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the relation is broken
+    state_out = context.run(context.on.relation_broken(remote_write), state_in)
+
+    # THEN the ruler config has neither remote_write nor a WAL
+    config = get_worker_config(state_out.relations, "loki-cluster", "ruler")
+    assert "remote_write" not in config
+    assert "wal" not in config
+
+
 @pytest.mark.parametrize(
     "max_chunk_age, expected_status",
     [

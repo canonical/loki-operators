@@ -272,9 +272,9 @@ class LokiConfig:
         #
         # But we are setting Loki's external url
 
-        external_url = coordinator._external_url
         ruler_config = {
             "alertmanager_url": ",".join(sorted(self._alertmanager_urls)),
+            "external_url": coordinator._external_url,
             "enable_sharding": True,
             "rule_path": str(self._root_data_dir / "data-ruler"),
             "enable_api": True,
@@ -282,10 +282,8 @@ class LokiConfig:
             # "storage": {"local": {"directory": str(self._root_data_dir / "data-alerts")}},
             "ring": {"kvstore": {"store": "memberlist"}},
         }
-        if external_url:
-            ruler_config["external_url"] = external_url
-        ruler_config["wal"] = {"dir": RULER_WAL_DIR}
         if url := self._remote_write_url:
+            ruler_config["wal"] = {"dir": RULER_WAL_DIR}
             ruler_config["remote_write"] = {
                 "enabled": True,
                 "clients": {"prometheus": {"url": url}},

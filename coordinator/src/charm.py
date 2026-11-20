@@ -101,10 +101,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             peer_relation_name="loki-peers",
             forward_alert_rules=False,
         )
-        self.framework.observe(
-            self.remote_write_consumer.on.endpoints_changed,
-            self._on_remote_write_endpoints_changed,
-        )
         self._max_chunk_age: str = str(self.model.config.get("max-chunk-age", "2h"))
         self.coordinator = Coordinator(
             charm=self,
@@ -210,11 +206,6 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
 
     def _on_certificates_changed(self, _) -> None:
         """Certificates relation changed: reconcile ingress scheme/port."""
-        if self.coordinator.can_handle_events:
-            self._reconcile()
-
-    def _on_remote_write_endpoints_changed(self, _) -> None:
-        """Remote-write endpoints changed: trigger config rebuild."""
         if self.coordinator.can_handle_events:
             self._reconcile()
 

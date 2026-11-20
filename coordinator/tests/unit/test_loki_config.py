@@ -264,7 +264,7 @@ def test_build_ruler_config_no_remote_write():
 
     assert "remote_write" not in ruler_config
     assert ruler_config["external_url"] == "http://loki.example"
-    assert ruler_config["wal"]["dir"].startswith("/loki/persisted/")
+    assert "wal" not in ruler_config
 
 
 def test_build_ruler_config_with_remote_write():
@@ -278,15 +278,7 @@ def test_build_ruler_config_with_remote_write():
         "enabled": True,
         "clients": {"prometheus": {"url": url}},
     }
-
-
-def test_build_ruler_config_omits_external_url_when_unset():
-    coord = _make_coordinator()
-    coord._external_url = ""
-
-    ruler_config = LokiConfig()._ruler_config(coord)
-
-    assert "external_url" not in ruler_config
+    assert ruler_config["wal"] == {"dir": "/loki/persisted/ruler-wal"}
 
 
 def test_build_schema_config(loki_config: LokiConfig):

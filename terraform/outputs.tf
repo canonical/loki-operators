@@ -27,14 +27,15 @@ output "provides" {
 
 output "requires" {
   value = {
-    alertmanager     = "alertmanager",
-    certificates     = "certificates",
-    ingress          = "ingress",
-    logging_consumer = "logging-consumer",
-    s3               = "s3",
-    charm_tracing    = "charm-tracing",
-    require_cmr_mesh = module.loki_coordinator.requires.require_cmr_mesh,
-    service_mesh     = module.loki_coordinator.requires.service_mesh,
+    alertmanager      = "alertmanager",
+    certificates      = "certificates",
+    ingress           = "ingress",
+    logging_consumer  = "logging-consumer",
+    s3                = "s3",
+    charm_tracing     = "charm-tracing",
+    send_remote_write = "send-remote-write",
+    require_cmr_mesh  = module.loki_coordinator.requires.require_cmr_mesh,
+    service_mesh      = module.loki_coordinator.requires.service_mesh,
   }
   description = "All Juju integration endpoints where the charm is the requirer"
 }
