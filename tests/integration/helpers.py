@@ -158,6 +158,33 @@ def query_loki_series_from_client_pod(
     return response_json
 
 
+@retry(
+    stop=stop_after_attempt(20),
+    wait=wait_exponential(multiplier=1, min=3, max=30),
+    reraise=True,
+)
+def query_prometheus_from_client_localhost(
+    juju: Juju,
+    query: str,
+    prometheus_app: str = "prometheus",
+) -> list[dict[str, Any]]:
+    """Run an instant Prometheus query from the test host until it returns results."""
+    prometheus_url = get_unit_address(juju, prometheus_app, 0)
+    response = requests.get(
+        f"http://{prometheus_url}:9090/api/v1/query",
+        params={"query": query},
+        timeout=10,
+    )
+    response.raise_for_status()
+    response_json = response.json()
+
+    assert response_json["status"] == "success"
+    results = response_json["data"]["result"]
+    if not results:
+        raise ValueError(f"No results for query: {query}")
+    return results
+
+
 def get_traefik_proxied_endpoints(
     juju: Juju, traefik_app: str = "traefik"
 ) -> Dict[str, Any]:
