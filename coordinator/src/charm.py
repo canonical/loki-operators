@@ -28,6 +28,7 @@ from charms.alertmanager_k8s.v1.alertmanager_dispatch import AlertmanagerConsume
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v1.grafana_source import GrafanaSourceProvider
 from charms.loki_k8s.v1.loki_push_api import LokiPushApiProvider
+from charms.prometheus_k8s.v1.prometheus_remote_write import PrometheusRemoteWriteConsumer
 from charms.traefik_k8s.v2.ingress import IngressPerAppReadyEvent, IngressPerAppRequirer
 from coordinated_workers.coordinator import Coordinator
 from coordinated_workers.helpers import NON_RECONCILABLE_EVENTS
@@ -68,6 +69,12 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             scheme=lambda: urlparse(self.internal_url).scheme,
         )
         self.alertmanager_consumer = AlertmanagerConsumer(self, relation_name="alertmanager")
+        self.remote_write_consumer = PrometheusRemoteWriteConsumer(
+            self,
+            relation_name="send-remote-write",
+            peer_relation_name="loki-peers",
+            forward_alert_rules=False,
+        )
         self._max_chunk_age: str = str(self.model.config.get("max-chunk-age", "2h"))
         self.coordinator = Coordinator(
             charm=self,
@@ -99,6 +106,7 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             ),
             workers_config=LokiConfig(
                 alertmanager_urls=self.alertmanager_consumer.get_cluster_info(),
+                remote_write_url=self._remote_write_url(),
                 max_chunk_age=self._max_chunk_age,
             ).config,
             worker_ports=lambda _: (HTTP_LISTEN_PORT, GRPC_LISTEN_PORT),
@@ -397,6 +405,23 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             for _, ds_uid in ds_uids.items():
                 raw_datasources.append({"type": "loki", "uid": ds_uid, "grafana_uid": grafana_uid})
         self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
+
+    def _remote_write_url(self) -> Optional[str]:
+        """Return the remote-write endpoint URL for the ruler, if any.
+
+        Returns:
+            The URL of the remote-write endpoint. Returns None if not related, or if no
+            endpoint is available.
+        """
+        endpoints = sorted(
+            self.remote_write_consumer.endpoints, key=lambda e: e.get("url", "")
+        )
+        if not endpoints:
+            logger.debug("No remote-write endpoints available")
+            return None
+        url = endpoints[0].get("url", "")
+        logger.debug("Remote-write endpoint selected: %s", url)
+        return url or None
 
     def _on_logging_relation_changed(self, event: ops.RelationChangedEvent):
         """Update the Loki push API endpoint whenever a logging relation changes.

@@ -16,6 +16,7 @@ from helpers import (
     get_prometheus_targets_from_client_localhost,
     get_traefik_proxied_endpoints,
     query_loki_series_from_client_localhost,
+    query_prometheus_from_client_localhost,
 )
 from jubilant import Juju
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -150,6 +151,25 @@ def test_logs_in_loki(juju: Juju):
     result = query_loki_series_from_client_localhost(juju)
     assert result
     assert result["data"][0]["juju_charm"] == "flog-k8s"
+
+
+def test_recording_rules(juju: Juju, cos_channel):
+    """Check that the flog recording rule is remote-written to Prometheus."""
+    juju.deploy(
+        "prometheus-k8s", app="prometheus-rules", channel=cos_channel, trust=True
+    )
+    juju.integrate("loki:send-remote-write", "prometheus-rules:receive-remote-write")
+    juju.integrate("flog:log-forwarder", "loki:logging")
+
+    juju.wait(
+        lambda status: jubilant.all_active(status, "loki", "prometheus-rules", "flog"),
+        timeout=1000,
+    )
+
+    results = query_prometheus_from_client_localhost(
+        juju, "ServerErrorLogCount5m", prometheus_app="prometheus-rules"
+    )
+    assert results[0]["metric"]["__name__"] == "ServerErrorLogCount5m"
 
 
 def test_traefik(juju: Juju):
