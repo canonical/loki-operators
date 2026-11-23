@@ -314,11 +314,13 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         )
 
     ###################################
-    # === ALERTMANAGER MESH POLICY === #
+    # === WORKER EGRESS MESH POLICY === #
     ###################################
+    # Alerts (Alertmanager) and recording rules (remote-write) are sent by the ruler, which runs in
+    # the worker pods. Cross-app egress from the workers needs explicit authorization in the mesh.
 
-    def _alerting_source_apps(self) -> List[str]:
-        """Return the worker app names allowed to reach Alertmanager.
+    def _worker_apps(self) -> List[str]:
+        """Return the worker app names allowed to reach the ruler's egress targets.
 
         Notes:
          - For simplicity we authorize *all* cluster worker apps. This can be tightened in the future.
@@ -328,35 +330,46 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             {unit["application"] for unit in self.coordinator.cluster.gather_topology()}
         )
 
-    def _alertmanager_target_apps(self) -> List[str]:
-        """Return the Alertmanager app names related over the `alertmanager` relation."""
+    def _related_app_names(self, relation_name: str) -> List[str]:
+        """Return the remote app names related over `relation_name`."""
         return sorted(
-            {rel.app.name for rel in self.model.relations.get("alertmanager", []) if rel.app}
+            {rel.app.name for rel in self.model.relations.get(relation_name, []) if rel.app}
         )
 
-    def _alerting_mesh_policies(self) -> List[MeshPolicy]:
-        """Build L4 policies allowing cluster workers to reach Alertmanager :9093."""
-        policies: List[MeshPolicy] = []
-        source_apps = self._alerting_source_apps()
-        target_apps = self._alertmanager_target_apps()
-        for target_app in target_apps:
-            for source_app in source_apps:
-                policies.append(
-                    MeshPolicy(
-                        source_namespace=self.model.name,
-                        source_app_name=source_app,
-                        target_namespace=self.model.name,
-                        target_app_name=target_app,
-                        target_type=PolicyTargetType.unit,
-                        endpoints=[Endpoint(ports=[ALERTMANAGER_API_PORT])],
-                    )
-                )
-        return policies
+    def _worker_egress_policies(self, target_apps: List[str], port: int) -> List[MeshPolicy]:
+        """Build L4 policies allowing every cluster worker to reach each of `target_apps` on `port`."""
+        return [
+            MeshPolicy(
+                source_namespace=self.model.name,
+                source_app_name=source_app,
+                target_namespace=self.model.name,
+                target_app_name=target_app,
+                target_type=PolicyTargetType.unit,
+                endpoints=[Endpoint(ports=[port])],
+            )
+            for target_app in target_apps
+            for source_app in self._worker_apps()
+        ]
 
-    def _alerting_policy_resource_manager(self) -> PolicyResourceManager:
-        """PolicyResourceManager scoped to the alertmanager (ruler-source) policies."""
+    def _alerting_mesh_policies(self) -> List[MeshPolicy]:
+        """Build policies allowing cluster workers to reach Alertmanager."""
+        return self._worker_egress_policies(
+            self._related_app_names("alertmanager"), ALERTMANAGER_API_PORT
+        )
+
+    def _remote_write_mesh_policies(self) -> List[MeshPolicy]:
+        """Build policies allowing cluster workers to reach the remote-write endpoint."""
+        url = self._remote_write_url()
+        if not url:
+            return []
+        parsed = urlparse(url)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        return self._worker_egress_policies(self._related_app_names("send-remote-write"), port)
+
+    def _worker_egress_policy_resource_manager(self, scope_suffix: str) -> PolicyResourceManager:
+        """PolicyResourceManager scoped to one kind of worker egress policies."""
         instance = _truncate_label_value(f"{self.app.name}-{self.model.name}")
-        scope = _truncate_label_value(f"{self.app.name}-{self.model.name}-alerting")
+        scope = _truncate_label_value(f"{self.app.name}-{self.model.name}-{scope_suffix}")
         return PolicyResourceManager(
             charm=self,
             lightkube_client=Client(  # type: ignore
@@ -369,27 +382,33 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
             logger=logger,
         )
 
-    def _reconcile_alerting_mesh_policies(self) -> None:
-        """Reconcile the worker -> Alertmanager auth policies.
+    def _reconcile_worker_egress_mesh_policies(self) -> None:
+        """Reconcile the worker -> Alertmanager and worker -> remote-write auth policies.
 
         Mirroring the cluster-internal policy pattern in coordinated_workers.service_mesh.
+        Each kind has its own scope so that reconciling one never prunes the other.
         """
         mesh = self.coordinator._mesh
         if not mesh:
             return
-        prm = self._alerting_policy_resource_manager()
         mesh_type = mesh.mesh_type()
-        if mesh_type:
-            policies = self._alerting_mesh_policies()
-            logger.info(
-                "Reconciling %d worker->alertmanager mesh policies (mesh_type=%s).",
-                len(policies),
-                mesh_type,
-            )
-            prm.reconcile(policies, mesh_type)
-        else:
-            # No active service-mesh relation: clean up any policies we previously created.
-            prm.delete()
+        for scope_suffix, build_policies in (
+            ("alerting", self._alerting_mesh_policies),
+            ("remote-write", self._remote_write_mesh_policies),
+        ):
+            prm = self._worker_egress_policy_resource_manager(scope_suffix)
+            if mesh_type:
+                policies = build_policies()
+                logger.info(
+                    "Reconciling %d worker->%s mesh policies (mesh_type=%s).",
+                    len(policies),
+                    scope_suffix,
+                    mesh_type,
+                )
+                prm.reconcile(policies, mesh_type)
+            else:
+                # No active service-mesh relation: clean up any policies we previously created.
+                prm.delete()
 
     ###########################
     # === UTILITY METHODS === #
@@ -584,8 +603,8 @@ class LokiCoordinatorK8SOperatorCharm(ops.CharmBase):
         # Open necessary service ports. Needed for telemetry proxying.
         self.unit.set_ports(NGINX_PORT)
 
-        # Reconcile the worker -> Alertmanager auth policies (sa/loki-backend -> :9093).
-        self._reconcile_alerting_mesh_policies()
+        # Reconcile the worker -> Alertmanager / remote-write auth policies.
+        self._reconcile_worker_egress_mesh_policies()
 
         # Re-publish ingress requirements so scheme/port reflect current TLS state.
         # The scheme lambda is evaluated at publish time, so after the Coordinator's reconcile

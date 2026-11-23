@@ -264,6 +264,60 @@ def test_remote_write_removed_when_relation_broken(
 
 
 @pytest.mark.parametrize(
+    "url, expected_port",
+    [
+        ("http://mimir.example:8080/api/v1/push", 8080),
+        ("https://mimir.example/api/v1/push", 443),
+        ("http://mimir.example/api/v1/push", 80),
+    ],
+)
+def test_remote_write_mesh_policies_target_endpoint_port(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container, url, expected_port
+):
+    """Test that workers get one policy per related remote-write app, on the endpoint's port."""
+    # GIVEN a coordinator with a worker app related to a remote-write provider
+    remote_write = Relation(
+        "send-remote-write",
+        remote_app_name="mimir",
+        remote_units_data={0: {"remote_write": json.dumps({"url": url})}},
+    )
+    state_in = State(
+        relations=[s3, all_worker, remote_write],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the mesh policies are built
+    with context(context.on.update_status(), state_in) as mgr:
+        policies = mgr.charm._remote_write_mesh_policies()
+
+    # THEN the worker app is allowed to reach the remote-write app on that port
+    assert [
+        (p.source_app_name, p.target_app_name, [e.ports for e in p.endpoints]) for p in policies
+    ] == [("worker", "mimir", [[expected_port]])]
+
+
+def test_remote_write_mesh_policies_empty_without_endpoint(
+    context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
+):
+    """Test that no remote-write policy is built while the provider has published no URL."""
+    # GIVEN a remote-write relation whose remote unit has not published an endpoint yet
+    remote_write = Relation("send-remote-write", remote_app_name="mimir")
+    state_in = State(
+        relations=[s3, all_worker, remote_write],
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        leader=True,
+    )
+
+    # WHEN the mesh policies are built
+    with context(context.on.update_status(), state_in) as mgr:
+        policies = mgr.charm._remote_write_mesh_policies()
+
+    # THEN no policy is created
+    assert policies == []
+
+
+@pytest.mark.parametrize(
     "max_chunk_age, expected_status",
     [
         ("2h", "active"),
