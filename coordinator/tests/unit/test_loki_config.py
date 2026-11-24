@@ -256,7 +256,29 @@ def test_build_query_range_config(loki_config: LokiConfig):
     assert query_range_config == expected_config
 
 
-# TODO: add test_build_ruler_config
+def test_build_ruler_config_no_remote_write():
+    coord = _make_coordinator()
+    coord._external_url = "http://loki.example"
+
+    ruler_config = LokiConfig()._ruler_config(coord)
+
+    assert "remote_write" not in ruler_config
+    assert ruler_config["external_url"] == "http://loki.example"
+    assert "wal" not in ruler_config
+
+
+def test_build_ruler_config_with_remote_write():
+    coord = _make_coordinator()
+    coord._external_url = "http://loki.example"
+    url = "http://10.0.0.1:9090/api/v1/write"
+
+    ruler_config = LokiConfig(remote_write_url=url)._ruler_config(coord)
+
+    assert ruler_config["remote_write"] == {
+        "enabled": True,
+        "clients": {"prometheus": {"url": url}},
+    }
+    assert ruler_config["wal"] == {"dir": "/loki/persisted/ruler-wal"}
 
 
 def test_build_schema_config(loki_config: LokiConfig):
