@@ -62,3 +62,9 @@ def test_servers_config(ipv6, tls, nginx_config):
         assert f"listen {ipv6_args}" in server_config
     else:
         assert f"listen {ipv6_args}" not in server_config
+
+
+@pytest.mark.parametrize("tls", (True, False))
+def test_ready_endpoint_is_exposed(tls, nginx_config):
+    server_config = nginx_config(tls=tls).get_config({"read": ["address.one"]}, tls)
+    assert "location = /ready" in server_config
